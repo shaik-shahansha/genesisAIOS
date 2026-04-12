@@ -1,0 +1,28 @@
+FROM python:3.11-slim
+
+# espeak-ng required by kokoro for phonemization; ffmpeg for audio format conversion
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    espeak-ng \
+    libespeak-ng-dev \
+    ffmpeg \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY packages/voice/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY packages/voice/main.py ./
+
+ENV WHISPER_MODEL=tiny
+ENV KOKORO_VOICE=bf_emma
+# HuggingFace model cache — kokoro downloads ~330MB on first use, cached in volume
+ENV HF_HOME=/data/hf_cache
+
+EXPOSE 7702
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
+  CMD curl -sf http://localhost:7702/health || exit 1
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7702"]

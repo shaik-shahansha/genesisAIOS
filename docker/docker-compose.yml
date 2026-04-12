@@ -1,0 +1,135 @@
+services:
+
+  # ── Ollama — local LLM inference engine ──────────────────────────────────────
+  # GPU support: uses NVIDIA GPU automatically when available (nvidia runtime
+  # detected). Set GENESIS_USE_GPU=false in .env to force CPU-only mode.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: genesis-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./ollama-entrypoint.sh:/ollama-entrypoint.sh:ro
+      - ./windows-cas.crt:/usr/local/share/ca-certificates/custom/windows-cas.crt:ro
+    entrypoint: ["sh", "/ollama-entrypoint.sh"]
+    environment:
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_INSECURE=true
+      # Keep all layers on GPU; unset or set to 0 to offload to CPU
+      - OLLAMA_NUM_GPU=${OLLAMA_NUM_GPU:-999}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 20s
+      retries: 10
+      start_period: 60s
+
+  # ── Genesis Daemon — Node.js OS kernel ───────────────────────────────────────
+  daemon:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: genesis-daemon
+    restart: unless-stopped
+    ports:
+      - "${GENESIS_PORT:-3000}:3000"
+    depends_on:
+      ollama:
+        condition: service_healthy
+      memory:
+        condition: service_healthy
+    volumes:
+      - genesis_data:/data
+      - ${GENESIS_WORKSPACE:-./workspace}:/workspace
+    environment:
+      - GENESIS_MODEL=${GENESIS_MODEL:-gemma4:e4b}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - GENESIS_PORT=3000
+      - GENESIS_DATA_DIR=/data
+      - GENESIS_PROJECT_ROOT=/workspace
+      - GENESIS_USER_NAME=${GENESIS_USER_NAME:-User}
+      - GENESIS_ALLOW_INSECURE_TLS=${GENESIS_ALLOW_INSECURE_TLS:-true}
+      - GENESIS_APPROVAL_MODE=${GENESIS_APPROVAL_MODE:-true}
+      - GENESIS_VOICE_ENABLED=true
+      - MEMORY_SERVICE_URL=http://memory:7701
+      - VOICE_SERVICE_URL=http://voice:7702
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/ai/models').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ── Genesis Memory — ChromaDB vector memory sidecar ────────────────────────
+  memory:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.memory
+    container_name: genesis-memory
+    restart: unless-stopped
+    volumes:
+      - genesis_data:/data
+    environment:
+      - CHROMA_PATH=/data/chroma
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7701/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── Genesis Voice — STT (faster-whisper) + TTS (kokoro) sidecar ───────────
+  voice:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.voice
+    container_name: genesis-voice
+    restart: unless-stopped
+    volumes:
+      - genesis_data:/data
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-tiny}
+      - KOKORO_VOICE=${KOKORO_VOICE:-bf_emma}
+      - HF_HOME=/data/hf_cache
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7702/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # ── Model init — pull model if not present ───────────────────────────────────
+  # NOTE: On corporate networks with SSL inspection, this may fail with a cert
+  # error. If so, run manually once the stack is up:
+  #   docker exec genesis-ollama ollama pull gemma4:e4b
+  model-init:
+    image: ollama/ollama:latest
+    container_name: genesis-model-init
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "Pulling ${GENESIS_MODEL:-gemma4:e4b}..."
+        ollama pull ${GENESIS_MODEL:-gemma4:e4b} && echo "Model ready" || echo "Pull failed — run: docker exec genesis-ollama ollama pull ${GENESIS_MODEL:-gemma4:e4b}"
+
+volumes:
+  ollama_data:
+    driver: local
+  genesis_data:
+    driver: local

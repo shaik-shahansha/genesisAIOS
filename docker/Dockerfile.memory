@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# chromadb's ONNXMiniLM embedding function needs onnxruntime (included in chromadb>=0.5)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY packages/memory/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY packages/memory/main.py ./
+
+ENV CHROMA_PATH=/data/chroma
+
+EXPOSE 7701
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+  CMD curl -sf http://localhost:7701/health || exit 1
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7701"]

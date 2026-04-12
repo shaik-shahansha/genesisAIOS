@@ -1,0 +1,1 @@
+ $env:PATH += ";C:\Program Files\Docker\Docker\resources\bin"; cd C:\dev\personalprojects\genesisos; docker compose -f docker/docker-compose.yml up --build

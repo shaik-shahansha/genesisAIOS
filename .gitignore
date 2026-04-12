@@ -1,0 +1,12 @@
+# Secrets and local env
+.env
+node_modules/
+dist/
+data/
+workspace/
+*.log
+.DS_Store
+Thumbs.db
+
+# Ollama models (large binary files)
+/ollama/
