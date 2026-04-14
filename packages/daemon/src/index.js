@@ -62,10 +62,24 @@ async function start() {
     bus.emit('daemon:ready', { port: PORT });
 
     // Pre-load the LLM into Ollama memory so the first chat message is instant.
-    // Run async — don't block startup. Retries are not needed; if Ollama isn't
-    // ready yet the warmup logs a warning and the model loads on first use instead.
-    const { warmup } = require('./llm/client');
-    warmup().catch(() => {});
+    (async () => {
+      const OLLAMA_BASE = process.env.OLLAMA_BASE_URL || 'http://ollama:11434';
+      const model = process.env.GENESIS_MODEL || 'gemma4:e4b';
+      console.log(`[genesis] warming up model: ${model}`);
+      try {
+        const res = await fetch(`${OLLAMA_BASE}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model, prompt: '', keep_alive: '10m' }),
+          signal: AbortSignal.timeout(120_000),
+        });
+        await res.text().catch(() => {});
+        if (res.ok) console.log(`[genesis] model "${model}" loaded and ready`);
+        else console.warn(`[genesis] warmup got ${res.status} — model may not be pulled yet`);
+      } catch (err) {
+        console.warn(`[genesis] warmup failed (Ollama not ready?): ${err.message}`);
+      }
+    })();
   });
 
   process.on('uncaughtException', (err) => {

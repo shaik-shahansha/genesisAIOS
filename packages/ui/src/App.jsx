@@ -214,7 +214,7 @@ export default function App() {
             className="text-white/22 font-semibold tracking-widest uppercase"
             style={{ fontSize: '10px', letterSpacing: '0.18em' }}
           >
-            Genesis AI OS
+            Genesis AI OS &middot; by Sha
           </span>
         </div>
 

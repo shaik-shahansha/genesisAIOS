@@ -171,31 +171,4 @@ async function listModels() {
   }
 }
 
-/**
- * Pre-load the model into Ollama's memory so the first real request is fast.
- * Uses /api/generate with an empty prompt — Ollama loads the model without
- * generating any tokens, then unloads after keep_alive expires normally.
- */
-async function warmup({ model } = {}) {
-  const log = getLogger();
-  const usedModel = model || DEFAULT_MODEL;
-  log('info', `[llm] warming up model: ${usedModel}`);
-  try {
-    const res = await fetch(`${OLLAMA_BASE}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: usedModel, prompt: '', keep_alive: '10m' }),
-      signal: AbortSignal.timeout(120_000),
-    });
-    if (res.ok) {
-      await res.text().catch(() => {});
-      log('info', `[llm] model "${usedModel}" loaded and ready`);
-    } else {
-      log('warn', `[llm] warmup got ${res.status} — model may not be pulled yet`);
-    }
-  } catch (err) {
-    log('warn', `[llm] warmup failed (Ollama not ready?): ${err.message}`);
-  }
-}
-
-module.exports = { streamChat, complete, listModels, chat, warmup };
+module.exports = { streamChat, complete, listModels, chat };

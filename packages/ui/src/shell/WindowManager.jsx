@@ -36,9 +36,7 @@ export default function WindowManager() {
   return (
     <div className="absolute inset-0 pointer-events-none z-10">
       <AnimatePresence>
-        {windows
-          .filter((w) => !w.minimized)
-          .map((w, index) => {
+        {windows.map((w, index) => {
             const pos = positions[w.id] || getInitialPos(index);
             const size = sizes[w.id] || { w: DEFAULT_W, h: DEFAULT_H };
             const isMax = maximized[w.id];
@@ -51,6 +49,7 @@ export default function WindowManager() {
                 size={isMax ? { w: window.innerWidth, h: window.innerHeight - 68 } : size}
                 isActive={w.id === activeId}
                 isMaximized={isMax}
+                isMinimized={!!w.minimized}
                 onFocus={() => focusWindow(w.id)}
                 onClose={() => closeWindow(w.id)}
                 onMinimize={() => minimizeWindow(w.id)}
@@ -66,7 +65,7 @@ export default function WindowManager() {
   );
 }
 
-function Window({ win, pos, size, isActive, isMaximized, onFocus, onClose, onMinimize, onMaximize, onMove, onResize, openApp }) {
+function Window({ win, pos, size, isActive, isMaximized, isMinimized, onFocus, onClose, onMinimize, onMaximize, onMove, onResize, openApp }) {
   const dragRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef(null);
@@ -124,7 +123,8 @@ function Window({ win, pos, size, isActive, isMaximized, onFocus, onClose, onMin
         width: size.w,
         height: size.h,
         zIndex: isActive ? 100 : 50,
-        pointerEvents: 'all',
+        pointerEvents: isMinimized ? 'none' : 'all',
+        visibility: isMinimized ? 'hidden' : 'visible',
         borderRadius: isMaximized ? 0 : tokens.radius.window,
         overflow: 'hidden',
         boxShadow: isActive ? tokens.shadow.window : '0 18px 56px rgba(0,0,0,0.46)',

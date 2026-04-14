@@ -192,12 +192,12 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'create_document',
-      description: 'Create a document in an exact requested format such as .docx, .xlsx, .pptx, or .pdf. Use this whenever the user explicitly asks for an Office or PDF file.',
+      description: 'Create a document file in .docx, .xlsx, .pptx, or .pdf format. ALWAYS include a path with the correct extension, e.g. "Documents/report.pdf". Default to .pdf when the user does not specify a format.',
       parameters: {
         type: 'object',
         properties: {
-          path: { type: 'string', description: 'Relative output path including file extension, for example Documents/invoice.docx' },
-          content: { type: 'string', description: 'The document content to place into the generated file.' },
+          path: { type: 'string', description: 'Output path including file extension, e.g. Documents/report.pdf or Documents/budget.xlsx. REQUIRED — always provide this.' },
+          content: { type: 'string', description: 'Full document content (markdown text for docx/pdf, CSV rows for xlsx).' },
         },
         required: ['path', 'content'],
       },
@@ -628,6 +628,8 @@ function inferRequestedBinaryDocumentFormat(text = '') {
   if (/(\.xlsx\b|\bxlsx\b|\bexcel\b|\bspreadsheet\b)/.test(lower)) return 'xlsx';
   if (/(\.pptx\b|\bpptx\b|\bpowerpoint\b|\bslide deck\b|\bpresentation\b)/.test(lower)) return 'pptx';
   if (/(\.pdf\b|\bpdf\b)/.test(lower)) return 'pdf';
+  // Generic "create (a) document/report/file" with no explicit format → default to pdf
+  if (/\b(create|make|generate|write|build)\b.{0,40}\b(document|report|file|guide|plan|brief|proposal|summary|analysis)\b/.test(lower)) return 'pdf';
   return null;
 }
 
@@ -726,9 +728,24 @@ async function toolReplaceFile({ path: rel, content }, options = {}) {
   return toolWriteFile({ path: rel, content }, options);
 }
 
-async function toolCreateDocument({ path: rel, content }, options = {}) {
+async function toolCreateDocument({ path: rel, content, filename, format }, options = {}) {
   await ensureWorkspaceStructure();
-  const outputPath = routeGeneratedPath(rel, 'document');
+
+  // ── Auto-generate a path when the LLM omits it ──────────────────────────
+  // The LLM (especially Gemma 4) often omits the path even though it's marked
+  // required in the schema. Derive a sensible filename from content or args.
+  let resolvedRel = rel || filename || '';
+  if (!resolvedRel || !path.extname(resolvedRel)) {
+    // Try to extract a title from the first markdown heading in content
+    const headingMatch = (content || '').match(/^#+\s+(.+)/m);
+    const titleSlug = headingMatch
+      ? headingMatch[1].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50)
+      : 'document';
+    const ext = format || (resolvedRel && path.extname(resolvedRel).slice(1)) || 'pdf';
+    resolvedRel = `Documents/${titleSlug}.${ext}`;
+  }
+
+  const outputPath = routeGeneratedPath(resolvedRel, 'document');
   const ext = path.extname(outputPath).toLowerCase().slice(1);
 
   if (!['docx', 'xlsx', 'pptx', 'pdf'].includes(ext)) {
@@ -1210,6 +1227,91 @@ async function tryHandleDirectAction(message, onEvent) {
     return { content: `Opened Browser and navigated to ${normalizedUrl}.`, actions: [action] };
   }
 
+  // ── create_app: handle "create/build/make a <name> app" directly ───────────
+  // Instead of letting the agent loop try to coerce the LLM into passing a full
+  // HTML string as a tool argument (which often fails or asks clarifying questions),
+  // we intercept here, call the LLM with a focused HTML-generation prompt, then
+  // call toolCreateApp directly with the output.
+  const createAppMatch = text.match(
+    /\b(?:create|build|make|generate)\s+(?:(?:a|an|me|the)\s+)?(.+?)\s+app\b/i
+  );
+  if (createAppMatch) {
+    const { addLog } = require('../logger');
+    const appDescription = createAppMatch[1].trim();
+
+    // Pick a sensible display name and emoji icon from the description
+    const appName = appDescription
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+
+    const iconMap = [
+      [/todo|task|checklist/i, '✅'],
+      [/note|journal|diary/i, '📝'],
+      [/timer|stopwatch|clock|countdown/i, '⏱️'],
+      [/calculator|calc|math/i, '🧮'],
+      [/weather/i, '🌤️'],
+      [/music|audio|player/i, '🎵'],
+      [/expense|budget|finance/i, '💰'],
+      [/habit/i, '🔥'],
+      [/password|vault/i, '🔐'],
+      [/calendar|schedule/i, '📅'],
+      [/photo|gallery|image/i, '🖼️'],
+      [/chat|messaging/i, '💬'],
+      [/game|quiz/i, '🎮'],
+      [/kpi|dashboard|analytics/i, '📊'],
+    ];
+    const icon = iconMap.find(([re]) => re.test(appDescription))?.[1] || '🧩';
+
+    addLog('info', `[agent] create_app direct action — generating HTML for "${appName}"`);
+
+    // Focused LLM call: generate only HTML, no tool calls needed
+    const htmlPrompt = [
+      {
+        role: 'system',
+        content:
+          'You are an expert front-end developer. When asked to build an app, you output ONLY the complete raw HTML file — no explanations, no markdown fences, no commentary. Just the HTML. The HTML must be self-contained (inline all CSS and JS) and use IndexedDB for any persistent storage. Apply a dark glassmorphism theme with accent colour #7C3AED.',
+      },
+      {
+        role: 'user',
+        content: `Build a complete, fully functional single-page "${appName}" app. Output ONLY the raw HTML — starting with <!DOCTYPE html> and ending with </html>. No markdown code fences.`,
+      },
+    ];
+
+    let htmlContent = '';
+    try {
+      const htmlMsg = await chat(htmlPrompt, { model: undefined });
+      htmlContent = (htmlMsg.content || '').trim();
+      // Strip any accidental markdown code fences the model may add
+      htmlContent = htmlContent
+        .replace(/^```html\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+    } catch (err) {
+      addLog('warn', `[agent] create_app HTML generation failed: ${err.message}`);
+      return null; // fall through to normal agent loop
+    }
+
+    if (!htmlContent.toLowerCase().includes('<html')) {
+      addLog('warn', '[agent] create_app: LLM did not return valid HTML, falling back to agent loop');
+      return null; // fall through to normal agent loop
+    }
+
+    const result = await toolCreateApp({
+      name: appName,
+      description: `A ${appDescription} app`,
+      icon,
+      html_content: htmlContent,
+    });
+
+    if (result?.action) emit(result.action);
+    return {
+      content: result?.finalMessage || `Created app **${appName}** ${icon}.`,
+      actions: result?.action ? [result.action] : [],
+    };
+  }
+
   return null;
 }
 
@@ -1247,23 +1349,27 @@ async function runAgent(messages, { model, onEvent, signal }) {
     addLog('info', `[agent] step ${step} — calling LLM with ${conversation.length} messages`);
     const stepT0 = Date.now();
 
-    // Per-step 60s timeout, composing with the parent abort signal
-    const stepAC = new AbortController();
-    const stepTimer = setTimeout(() => stepAC.abort(new Error('Agent step timeout (60s)')), 60_000);
-    if (signal) signal.addEventListener('abort', () => stepAC.abort(), { once: true });
+    // Compose with the parent abort signal only (no per-step timeout — the
+    // LLM client already enforces a ~180s hard limit via AbortSignal.timeout).
+    // A 60s cap was previously set here but killed app/document generation
+    // before the model could finish writing large HTML/content outputs.
+    let callSignal = signal || undefined;
+    if (signal) {
+      const ac = new AbortController();
+      signal.addEventListener('abort', () => ac.abort(), { once: true });
+      callSignal = ac.signal;
+    }
 
     let assistantMessage;
     try {
-      assistantMessage = await chat(conversation, { model, tools: TOOL_DEFS, signal: stepAC.signal });
+      assistantMessage = await chat(conversation, { model, tools: TOOL_DEFS, signal: callSignal });
     } catch (err) {
-      clearTimeout(stepTimer);
       const msg = err?.name === 'AbortError' || err?.message?.includes('timeout')
         ? 'Request timed out. The model took too long. Please try again or rephrase your request.'
         : `Model error: ${err.message}`;
       addLog('warn', `[agent] step ${step} aborted/timed out: ${err.message}`);
       return { content: msg, actions };
     }
-    clearTimeout(stepTimer);
     addLog('info', `[agent] step ${step} LLM returned in ${Date.now() - stepT0}ms`);
 
     // Primary: structured tool_calls from Ollama

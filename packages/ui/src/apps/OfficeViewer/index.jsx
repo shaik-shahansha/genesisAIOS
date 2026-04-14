@@ -4,7 +4,10 @@ import JSZip from 'jszip';
 import Editor from '@monaco-editor/react';
 import FilePicker from '../../components/FilePicker';
 
-const EDITABLE_EXTS = new Set(['docx', 'pptx', 'xlsx', 'pdf']);
+const OFFICE_EXTS = new Set(['docx', 'pptx', 'xlsx', 'pdf']);
+const TEXT_EXTS   = new Set(['txt', 'md', 'markdown', 'html', 'htm']);
+const IMAGE_EXTS  = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif']);
+const EDITABLE_EXTS = new Set([...OFFICE_EXTS, ...TEXT_EXTS]);
 
 export default function OfficeViewer({ filePath: initialPath }) {
   const [currentPath, setCurrentPath] = useState(initialPath || '');
@@ -146,6 +149,19 @@ export default function OfficeViewer({ filePath: initialPath }) {
         if (!slides.length) throw new Error('No readable slide content found in PPTX file');
         containerRef.current.innerHTML = `<div class="pptx-view">${slides.join('')}</div>`;
 
+      } else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif'].includes(ext)) {
+        const url = `/api/fs/raw?path=${encodeURIComponent(p)}`;
+        containerRef.current.innerHTML = '';
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);padding:12px;box-sizing:border-box;';
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = p.split('/').pop();
+        img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;box-shadow:0 4px 32px rgba(0,0,0,0.5);';
+        img.onerror = () => { wrapper.innerHTML = `<p style="color:rgba(255,255,255,0.4);font-size:13px;">Failed to load image</p>`; };
+        wrapper.appendChild(img);
+        containerRef.current.appendChild(wrapper);
+
       } else {
         try {
           const text = await blob.text();
@@ -166,10 +182,20 @@ export default function OfficeViewer({ filePath: initialPath }) {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/fs/source?path=${encodeURIComponent(currentPath)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const { content } = await res.json();
-      setSourceText(content || '');
+      const fileExt = currentPath.split('.').pop().toLowerCase();
+      if (TEXT_EXTS.has(fileExt)) {
+        // Plain text — read raw bytes directly
+        const res = await fetch(`/api/fs/raw?path=${encodeURIComponent(currentPath)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        setSourceText(text);
+      } else {
+        // Office/PDF — extract editable source text via office extractor
+        const res = await fetch(`/api/fs/source?path=${encodeURIComponent(currentPath)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const { content } = await res.json();
+        setSourceText(content || '');
+      }
       setEditMode(true);
     } catch (e) {
       setError(`Could not get source: ${e.message}`);
@@ -183,14 +209,31 @@ export default function OfficeViewer({ filePath: initialPath }) {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch('/api/fs/office', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: currentPath, content: sourceText }),
-      });
-      if (!res.ok) {
-        const { error: msg } = await res.json().catch(() => ({}));
-        throw new Error(msg || `HTTP ${res.status}`);
+      const fileExt = currentPath.split('.').pop().toLowerCase();
+      const isTextFile = TEXT_EXTS.has(fileExt);
+
+      if (isTextFile) {
+        // Plain-text save — write directly without regeneration
+        const res = await fetch('/api/fs/write', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentPath, content: sourceText }),
+        });
+        if (!res.ok) {
+          const { error: msg } = await res.json().catch(() => ({}));
+          throw new Error(msg || `HTTP ${res.status}`);
+        }
+      } else {
+        // Office / PDF — regenerate binary via office endpoint
+        const res = await fetch('/api/fs/office', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: currentPath, content: sourceText }),
+        });
+        if (!res.ok) {
+          const { error: msg } = await res.json().catch(() => ({}));
+          throw new Error(msg || `HTTP ${res.status}`);
+        }
       }
       setEditMode(false);
       await openFile(currentPath);
@@ -208,6 +251,12 @@ export default function OfficeViewer({ filePath: initialPath }) {
   const fileName = currentPath ? currentPath.split('/').pop() : null;
   const ext = currentPath ? currentPath.split('.').pop().toLowerCase() : '';
   const isEditable = EDITABLE_EXTS.has(ext);
+  const isTextFile = TEXT_EXTS.has(ext);
+  const isImage = IMAGE_EXTS.has(ext);
+  const monacoLang = ext === 'md' || ext === 'markdown' ? 'markdown'
+    : ext === 'html' || ext === 'htm' ? 'html'
+    : ext === 'txt' ? 'plaintext'
+    : 'markdown'; // default for office source editing
 
   return (
     <div className="flex flex-col h-full text-white">
@@ -264,6 +313,20 @@ export default function OfficeViewer({ filePath: initialPath }) {
             Edit
           </button>
         )}
+
+        {isImage && !editMode && currentPath && (
+          <a
+            href={`/api/fs/raw?path=${encodeURIComponent(currentPath)}`}
+            download={fileName}
+            title="Download image"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/8 hover:bg-white/12 rounded-lg text-white/70 text-xs font-medium transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="rgba(14,165,233,0.9)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 4v10M6 10l4 4 4-4"/><path d="M3 16h14"/>
+            </svg>
+            Download
+          </a>
+        )}
       </div>
 
       {loading && (
@@ -283,19 +346,22 @@ export default function OfficeViewer({ filePath: initialPath }) {
             <rect x="2.5" y="2.5" width="15" height="15" rx="1.5" />
             <path d="M2.5 7.5h15M2.5 12.5h15M8 2.5v15" />
           </svg>
-          <p>Click <strong className="text-white/50">Browse</strong> to open a .docx, .xlsx, .pptx, .md or .txt file</p>
+          <p>Click <strong className="text-white/50">Browse</strong> to open a .docx, .xlsx, .pptx, .pdf, .md, .html, .txt or image file</p>
         </div>
       )}
 
       {editMode && !loading && (
         <div className="flex-1 flex flex-col min-h-0">
           <div className="px-3 py-1.5 bg-violet-900/30 border-b border-violet-500/20 text-violet-300 text-xs">
-            Editing source - changes will regenerate the {ext.toUpperCase()} file on save
+            {isTextFile
+            ? `Editing ${ext.toUpperCase()} — Save to write changes to disk`
+            : `Editing source — Save to regenerate the ${ext.toUpperCase()} file`}
           </div>
           <div className="flex-1 min-h-0">
             <Editor
               height="100%"
-              defaultLanguage="markdown"
+              defaultLanguage={monacoLang}
+              language={monacoLang}
               value={sourceText}
               onChange={(v) => setSourceText(v ?? '')}
               theme="vs-dark"

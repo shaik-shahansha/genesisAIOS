@@ -63,7 +63,6 @@ export default function ChatPanel({ onClose, onStateChange }) {
   const isSpeakingRef = useRef(false);  // true while TTS is playing — mic is muted
   const ttsAudioRef = useRef(null);     // current Kokoro Audio element
   const ttsUtteranceRef = useRef(null); // current Web Speech utterance
-  const ttsAbortRef = useRef(null);     // call to cancel in-flight TTS sentence chain
   const abortControllerRef = useRef(null); // abort signal for the current SSE request
   const [pendingVoiceSend, setPendingVoiceSend] = useState('');
 
@@ -279,7 +278,7 @@ export default function ChatPanel({ onClose, onStateChange }) {
     };
 
     recognition.onresult = (event) => {
-      if (!voiceModeRef.current || loadingRef.current) return;
+      if (!voiceModeRef.current || isSpeakingRef.current || loadingRef.current) return;
       // Collect all NEW final results from this batch
       const transcript = Array.from(event.results)
         .slice(event.resultIndex)
@@ -287,25 +286,10 @@ export default function ChatPanel({ onClose, onStateChange }) {
         .map((r) => r[0]?.transcript || '')
         .join(' ')
         .trim();
-      if (!transcript) return;
-      // Barge-in: user spoke while TTS was playing → interrupt TTS first
-      if (isSpeakingRef.current) {
-        ttsAbortRef.current?.();
-        ttsAbortRef.current = null;
-        if (ttsAudioRef.current) {
-          const a = ttsAudioRef.current;
-          a.onended = null;
-          a.onerror = null;
-          a.pause();
-          a.src = '';
-          ttsAudioRef.current = null;
-        }
-        window.speechSynthesis?.cancel();
-        ttsUtteranceRef.current = null;
-        isSpeakingRef.current = false;
+      if (transcript) {
+        setVoiceError('');
+        setPendingVoiceSend(transcript);
       }
-      setVoiceError('');
-      setPendingVoiceSend(transcript);
     };
 
     recognition.onerror = (event) => {
@@ -353,7 +337,7 @@ export default function ChatPanel({ onClose, onStateChange }) {
       if (!voiceModeRef.current) return;
 
       const analyser = analyserRef.current;
-      if (!analyser || loadingRef.current) {
+      if (!analyser || loadingRef.current || isSpeakingRef.current) {
         vadFrameRef.current = requestAnimationFrame(tick);
         return;
       }
@@ -368,26 +352,7 @@ export default function ChatPanel({ onClose, onStateChange }) {
       const rms = Math.sqrt(sum / sampleBuffer.length);
       const now = performance.now();
 
-      // ── Barge-in: user speaks over TTS → interrupt immediately ────────────
-      if (isSpeakingRef.current && rms > 0.07) {
-        ttsAbortRef.current?.();
-        ttsAbortRef.current = null;
-        if (ttsAudioRef.current) {
-          const a = ttsAudioRef.current;
-          a.onended = null;
-          a.onerror = null;
-          a.pause();
-          a.src = '';
-          ttsAudioRef.current = null;
-        }
-        window.speechSynthesis?.cancel();
-        ttsUtteranceRef.current = null;
-        isSpeakingRef.current = false;
-        onStateChange?.('listening');
-        setListening(true);
-      }
-
-      if (!isSpeakingRef.current && rms > 0.05) {
+      if (rms > 0.05) {
         lastSpeechAtRef.current = now;
         if (mediaRecorderRef.current?.state !== 'recording') {
           audioChunksRef.current = [];
@@ -424,8 +389,7 @@ export default function ChatPanel({ onClose, onStateChange }) {
       }
 
       if (
-        !isSpeakingRef.current
-        && mediaRecorderRef.current?.state === 'recording'
+        mediaRecorderRef.current?.state === 'recording'
         && lastSpeechAtRef.current
         && now - lastSpeechAtRef.current > 850
       ) {
@@ -454,37 +418,37 @@ export default function ChatPanel({ onClose, onStateChange }) {
     }
   }
 
-  // ── Mute mic: set speaking flag, stop recorder (keep VAD running for barge-in)
+  // ── Mute mic: stop recognition, set flag ─────────────────────────────────
   function muteMic() {
     isSpeakingRef.current = true;
     resumeVoiceModeRef.current = false;
-    lastSpeechAtRef.current = 0;
     try { speechRef.current?.abort(); } catch {}
-    // Stop only the recorder — VAD loop keeps running to detect barge-in
+    // Pause continuous web speech during TTS playback
+    if (webSpeechContinuousRef.current) {
+      try { webSpeechContinuousRef.current.abort(); } catch {}
+    }
+    stopVoiceMonitor();
     if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
     setListening(false);
   }
 
-  // ── Unmute mic: clear flag, restart web speech if needed ──────────────────
+  // ── Unmute mic: clear flag, restart recognition after short delay ─────────
   function unmuteMic() {
     isSpeakingRef.current = false;
-    ttsAbortRef.current = null;
-    lastSpeechAtRef.current = 0;
     if (voiceModeRef.current) {
       resumeVoiceModeRef.current = true;
       setInput('');
-      setListening(true);
-      onStateChange?.('listening');
+      // Small delay ensures speaker output fully stops before mic opens
       setTimeout(() => {
-        if (isSpeakingRef.current || !voiceModeRef.current || loadingRef.current) return;
-        if (voiceStatus.whisper) {
-          armContinuousVoiceLoop().catch(() => { armContinuousWebSpeech(); });
-          return;
+        if (!isSpeakingRef.current && voiceModeRef.current && !loadingRef.current) {
+          const canUseWhisper = voiceStatus.whisper;
+          if (canUseWhisper) {
+            armContinuousVoiceLoop().catch(() => { armContinuousWebSpeech(); });
+          } else {
+            armContinuousWebSpeech();
+          }
         }
-        if (webSpeechContinuousRef.current) {
-          try { webSpeechContinuousRef.current.start(); } catch {}
-        }
-      }, 400);
+      }, 500);
     }
   }
 
@@ -525,17 +489,15 @@ export default function ChatPanel({ onClose, onStateChange }) {
       .filter(Boolean);
     if (!sentences.length) sentences.push(cleanText);
 
-    // ── Use Kokoro TTS whenever the sidecar is available ─────────────────────
     if (voiceStatus.tts) {
-      if (voiceMode) muteMic();  // only mute mic in continuous voice mode
+      // ── Local Kokoro TTS for both standard voice and continuous voice ─────
+      if (voiceMode) muteMic();
       onStateChange?.('speaking');
       let cancelled = false;
-      ttsAbortRef.current = () => { cancelled = true; };
 
       const speakSentences = async (idx) => {
         if (cancelled || idx >= sentences.length) {
           ttsAudioRef.current = null;
-          ttsAbortRef.current = null;
           if (voiceMode) unmuteMic(); else onStateChange?.('idle');
           return;
         }
@@ -561,7 +523,6 @@ export default function ChatPanel({ onClose, onStateChange }) {
           // Kokoro down — Web Speech API fallback
           setVoiceError(err.message || 'Voice output unavailable');
           if (cancelled) return;
-          ttsAbortRef.current = null;
           if (!window.speechSynthesis) {
             if (voiceMode) unmuteMic(); else onStateChange?.('idle');
             return;
@@ -585,7 +546,7 @@ export default function ChatPanel({ onClose, onStateChange }) {
       return;
     }
 
-    // ── No Kokoro sidecar: Web Speech API ─────────────────────────────────────
+    // ── Standard mode (voice toggle, not continuous): Web Speech API ────────
     if (!window.speechSynthesis) return;
     const utterance = new SpeechSynthesisUtterance(cleanText.slice(0, 300));
     ttsUtteranceRef.current = utterance;
@@ -706,6 +667,7 @@ export default function ChatPanel({ onClose, onStateChange }) {
     setLoading(true);
     loadingRef.current = true;
     resumeVoiceModeRef.current = false;
+    stopVoiceMonitor();
     if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
     if (voiceModeRef.current) {
       try { speechRef.current?.abort(); } catch {}

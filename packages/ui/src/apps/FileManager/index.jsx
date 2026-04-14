@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { stagger, staggerItem } from '../../design/animations';
 import { createOfficeTemplate } from './officeTemplates';
 
 const OFFICE_EXTENSIONS = new Set(['doc', 'docx', 'xlsx', 'xls', 'ppt', 'pptx', 'md', 'markdown', 'html', 'htm', 'txt', 'rtf', 'csv']);
+const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif']);
 
 function getIcon(item) {
   const tone = item.type === 'dir'
@@ -42,6 +43,9 @@ export default function FileManager({ winId }) {
   const [error, setError] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
   const [entryName, setEntryName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
+  const uploadInputRef = useRef(null);
 
   const load = useCallback(async (path) => {
     setLoading(true);
@@ -82,11 +86,62 @@ export default function FileManager({ winId }) {
     const ext = item.ext;
     if (ext === 'pdf') {
       window._genesisOpenApp?.('pdf', { filePath: item.path });
+    } else if (IMAGE_EXTENSIONS.has(ext)) {
+      window._genesisOpenApp?.('office', { filePath: item.path });
     } else if (OFFICE_EXTENSIONS.has(ext)) {
       window._genesisOpenApp?.('office', { filePath: item.path });
     } else {
       window._genesisOpenApp?.('editor', { filePath: item.path });
     }
+  };
+
+  const handleUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    // Reset input so the same file can be re-uploaded
+    e.target.value = '';
+    setUploading(true);
+    setError(null);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setUploadProgress(`Uploading ${file.name} (${i + 1}/${files.length})…`);
+      try {
+        const destPath = cwd && cwd !== '.' ? `${cwd}/${file.name}` : file.name;
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8 = new Uint8Array(arrayBuffer);
+        // Build base64 in chunks to avoid call-stack limits on large files
+        let binary = '';
+        const CHUNK = 8192;
+        for (let j = 0; j < uint8.length; j += CHUNK) {
+          binary += String.fromCharCode(...uint8.subarray(j, j + CHUNK));
+        }
+        const base64 = btoa(binary);
+        const res = await fetch('/api/fs/write-binary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: destPath, base64 }),
+        });
+        if (!res.ok) {
+          const { error: msg } = await res.json().catch(() => ({}));
+          throw new Error(msg || `HTTP ${res.status}`);
+        }
+      } catch (err) {
+        setError(`Upload failed for ${file.name}: ${err.message}`);
+      }
+    }
+    setUploading(false);
+    setUploadProgress('');
+    load(cwd);
+  };
+
+  const handleDownload = (item) => {
+    const url = `/api/fs/raw?path=${encodeURIComponent(item.path)}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = item.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const createEntry = async (kind) => {
@@ -148,6 +203,27 @@ export default function FileManager({ winId }) {
         <button onClick={() => load(cwd)} className="text-white/50 hover:text-white text-sm px-1" title="Refresh">↻</button>
         <button onClick={() => { setPendingAction('file'); setEntryName(''); }} className="text-white/60 hover:text-white text-xs px-2 py-1 rounded-md hover:bg-white/6">New File</button>
         <button onClick={() => { setPendingAction('folder'); setEntryName(''); }} className="text-white/60 hover:text-white text-xs px-2 py-1 rounded-md hover:bg-white/6">New Folder</button>
+
+        {/* Upload */}
+        <button
+          onClick={() => uploadInputRef.current?.click()}
+          disabled={uploading}
+          title="Upload files from your PC"
+          className="flex items-center gap-1 text-white/60 hover:text-white disabled:opacity-40 text-xs px-2 py-1 rounded-md hover:bg-white/6 transition-colors"
+        >
+          <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 14V4M6 8l4-4 4 4"/>
+            <path d="M3 16h14"/>
+          </svg>
+          {uploading ? uploadProgress : 'Upload'}
+        </button>
+        <input
+          ref={uploadInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={handleUpload}
+        />
 
         {/* Breadcrumbs */}
         <div className="flex items-center gap-1 flex-1 overflow-x-auto">
@@ -237,9 +313,24 @@ export default function FileManager({ winId }) {
         <div className="px-3 py-2 border-t border-white/8 text-white/40 text-xs flex items-center gap-3">
           <span>{getIcon(selected)} {selected.name}</span>
           {selected.type === 'file' && <span>{formatSize(selected.size)}</span>}
-          <button onClick={() => handleOpen(selected)} className="ml-auto text-accent hover:text-accent-light transition-colors">
-            Open →
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            {selected.type === 'file' && (
+              <button
+                onClick={() => handleDownload(selected)}
+                title="Download to your PC"
+                className="flex items-center gap-1 text-white/50 hover:text-sky-400 transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10 4v10M6 10l4 4 4-4"/>
+                  <path d="M3 16h14"/>
+                </svg>
+                Download
+              </button>
+            )}
+            <button onClick={() => handleOpen(selected)} className="text-accent hover:text-accent-light transition-colors">
+              Open →
+            </button>
+          </div>
         </div>
       )}
     </div>
