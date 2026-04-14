@@ -24,6 +24,7 @@ export default function App() {
   const [orbState, setOrbState] = useState('idle'); // idle | listening | thinking | speaking
   const [splashDone, setSplashDone] = useState(false);
   const [authState, setAuthState] = useState({ checked: false, passwordSet: false, authenticated: true });
+  const [desktopFullscreen, setDesktopFullscreen] = useState(Boolean(document.fullscreenElement));
   // Created mini-apps loaded from API for Desktop tiles
   const [userApps, setUserApps] = useState([]);
 
@@ -37,6 +38,12 @@ export default function App() {
     if (wallpaper) {
       document.documentElement.style.setProperty('--wallpaper-bg', wallpaper);
     }
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => setDesktopFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
   const fetchUserApps = useCallback(async () => {
@@ -79,6 +86,17 @@ export default function App() {
     // Reuse existing window of same type (unless multi allowed)
     const existing = windows.find((w) => w.appId === appId && !appDef.multi);
     if (existing) {
+      setWindows((prev) => prev.map((windowItem) => (
+        windowItem.id === existing.id
+          ? {
+              ...windowItem,
+              props,
+              title: windowTitle,
+              icon: windowIcon,
+              minimized: false,
+            }
+          : windowItem
+      )));
       setActiveId(existing.id);
       return;
     }
@@ -110,12 +128,24 @@ export default function App() {
     setNotifOpen(true);
   }, []);
 
+  const toggleDesktopFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch {}
+  }, []);
+
   const osCtx = {
     windows, activeId, openApp, closeWindow, focusWindow, minimizeWindow, restoreWindow,
     launcherOpen, setLauncherOpen,
     notifOpen, setNotifOpen,
     notifications, pushNotification,
     orbState, setOrbState,
+    desktopFullscreen,
+    toggleDesktopFullscreen,
     authState,
     refreshAuth,
     userApps,
@@ -187,6 +217,16 @@ export default function App() {
             Genesis AI OS
           </span>
         </div>
+
+        {desktopFullscreen && (
+          <button
+            onClick={toggleDesktopFullscreen}
+            className="absolute top-4 right-4 z-[380] px-3 py-1.5 rounded-xl glass-dark text-white/80 text-xs border border-white/10 hover:bg-white/10 transition-colors"
+            title="Exit distraction-free fullscreen"
+          >
+            Exit Full Screen
+          </button>
+        )}
       </div>
     </OSContext.Provider>
   );

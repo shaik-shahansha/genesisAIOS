@@ -11,6 +11,7 @@ const bus = require('./bus');
 const db = require('./db');
 const auth = require('./auth');
 const shellHandler = require('./routes/shell');
+const { ensureWorkspaceStructure } = require('./workspace');
 
 const PORT = process.env.GENESIS_PORT || 3000;
 const UI_DIST = process.env.NODE_ENV === 'production'
@@ -18,11 +19,14 @@ const UI_DIST = process.env.NODE_ENV === 'production'
   : path.join(__dirname, '../dist');
 
 async function start() {
+  await ensureWorkspaceStructure();
+
   const app = express();
   expressWs(app);
 
   app.use(cors());
   app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // Serve built UI
   app.use(express.static(UI_DIST));
@@ -56,6 +60,12 @@ async function start() {
   app.listen(PORT, () => {
     console.log(`[genesis] daemon running on http://localhost:${PORT}`);
     bus.emit('daemon:ready', { port: PORT });
+
+    // Pre-load the LLM into Ollama memory so the first chat message is instant.
+    // Run async — don't block startup. Retries are not needed; if Ollama isn't
+    // ready yet the warmup logs a warning and the model loads on first use instead.
+    const { warmup } = require('./llm/client');
+    warmup().catch(() => {});
   });
 
   process.on('uncaughtException', (err) => {

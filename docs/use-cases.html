@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Genesis OS use cases — personal AI companion, developer powerhouse, home lab, Raspberry Pi, privacy advocate, and more." />
+  <title>Use Cases — Genesis OS</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%237c3aed'/><text y='24' x='4' font-size='22'>⚡</text></svg>" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    .use-case-hero-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      overflow: hidden;
+      transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
+    }
+    .use-case-hero-card:hover {
+      border-color: var(--border-accent);
+      box-shadow: var(--shadow-xl);
+      transform: translateY(-3px);
+    }
+    .use-case-header {
+      padding: 28px;
+      border-bottom: 1px solid var(--border);
+    }
+    .use-case-emoji { font-size: 2.8rem; margin-bottom: 12px; }
+    .use-case-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; }
+    .use-case-sub   { font-size: 0.875rem; color: var(--text-3); }
+    .use-case-body  { padding: 24px 28px; }
+
+    .conversation {
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .conv-msg {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .conv-avatar {
+      width: 30px; height: 30px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .conv-avatar.ai   { background: linear-gradient(135deg, var(--accent), var(--accent-400)); }
+    .conv-avatar.user { background: var(--bg-deeper); border: 1px solid var(--border); }
+    .conv-bubble {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 9px 13px;
+      font-size: 0.83rem;
+      color: var(--text-2);
+      line-height: 1.6;
+      max-width: 85%;
+    }
+    .conv-bubble.ai {
+      border-color: var(--border-accent);
+      background: var(--accent-50);
+    }
+    .conv-msg.user { flex-direction: row-reverse; }
+    .conv-msg.user .conv-bubble { background: var(--bg-card); }
+
+    .use-case-features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    @media (max-width: 768px) {
+      .use-case-body { padding: 20px; }
+      .use-case-header { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo"><div class="nav-logo-icon">⚡</div><span>Genesis OS</span></a>
+    <div class="nav-links">
+      <a href="features.html"     class="nav-link" data-page="features.html">Features</a>
+      <a href="architecture.html" class="nav-link" data-page="architecture.html">Architecture</a>
+      <a href="use-cases.html"    class="nav-link" data-page="use-cases.html">Use Cases</a>
+      <a href="security.html"     class="nav-link" data-page="security.html">Security</a>
+      <a href="roadmap.html"      class="nav-link" data-page="roadmap.html">Roadmap</a>
+    </div>
+    <div class="nav-actions">
+      <button class="nav-theme-btn">🌙</button>
+      <a href="https://github.com/shahansha/genesis-os" class="nav-github" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        <span>GitHub</span>
+      </a>
+      <button class="nav-hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</nav>
+<div class="nav-mobile" id="mobile-nav">
+  <a href="features.html"     class="nav-link" data-page="features.html">Features</a>
+  <a href="architecture.html" class="nav-link" data-page="architecture.html">Architecture</a>
+  <a href="use-cases.html"    class="nav-link" data-page="use-cases.html">Use Cases</a>
+  <a href="security.html"     class="nav-link" data-page="security.html">Security</a>
+  <a href="roadmap.html"      class="nav-link" data-page="roadmap.html">Roadmap</a>
+</div>
+
+<main>
+
+<!-- PAGE HERO -->
+<section class="page-hero">
+  <div class="container">
+    <div class="page-hero-label">Use Cases</div>
+    <h1>Genesis OS in<br><span class="gradient-text">the real world</span></h1>
+    <p>From personal productivity to home automation to privacy advocacy — Genesis OS adapts to how you think and how you work, not the other way around.</p>
+  </div>
+</section>
+
+<!-- ═══ MAIN USE CASES ═══ -->
+<section class="section">
+  <div class="container">
+    <div class="grid-2 stagger">
+
+      <!-- 1. Personal AI Companion -->
+      <div class="use-case-hero-card fade-up">
+        <div class="use-case-header">
+          <div class="use-case-emoji">🤝</div>
+          <div class="use-case-title">Personal AI Companion</div>
+          <div class="use-case-sub">For anyone who wants an AI that actually knows them</div>
+        </div>
+        <div class="use-case-body">
+          <div class="conversation">
+            <div class="conv-msg user">
+              <div class="conv-avatar user">👤</div>
+              <div class="conv-bubble">What was that book I was asking about last Tuesday?</div>
+            </div>
+            <div class="conv-msg">
+              <div class="conv-avatar ai">⚡</div>
+              <div class="conv-bubble ai">You asked about "The Pragmatic Programmer" — you wanted to know if it covers modern CI/CD. You also mentioned wanting to read it before your team review next month.</div>
+            </div>
+            <div class="conv-msg user">
+              <div class="conv-avatar user">👤</div>
+              <div class="conv-bubble">Perfect. Remind me to buy it tonight.</div>
+            </div>
+            <div class="conv-msg">
+              <div class="conv-avatar ai">⚡</div>
+              <div class="conv-bubble ai">Done. I'll notify you at 8pm. Want me to also find a local library copy so you can preview it first?</div>
+            </div>
+          </div>
+          <p style="font-size:0.875rem; color:var(--text-3); margin-bottom:16px;">
+            Genesis remembers every conversation, cross-references your files, and proactively surfaces things you've forgotten — like a personal assistant that never takes a day off.
+          </p>
+          <div class="use-case-features">
+            <span class="tag">🧠 Persistent memory</span>
+            <span class="tag">📅 Proactive reminders</span>
+            <span class="tag">🔍 Cross-session context</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Developer Power User -->
+      <div class="use-case-hero-card fade-up">
+        <div class="use-case-header">
+          <div class="use-case-emoji">💻</div>
+          <div class="use-case-title">Developer Power User</div>
+          <div class="use-case-sub">For engineers who want an AI that lives in their environment</div>
+        </div>
+        <div class="use-case-body">
+          <div class="conversation">
+            <div class="conv-msg user">
+              <div class="conv-avatar user">👤</div>
+              <div class="conv-bubble">The Docker build is failing. Can you check the logs and fix it?</div>
+            </div>
+            <div class="conv-msg">
+              <div class="conv-avatar ai">⚡</div>
+              <div class="conv-bubble ai">Reading <code>docker-compose.yml</code>... Found the issue: the Python package <code>chromadb</code> version conflicts with <code>pydantic</code>. Want me to pin both to compatible versions and rebuild?</div>
+            </div>
+            <div class="conv-msg user">
+              <div class="conv-avatar user">👤</div>
+              <div class="conv-bubble">Yes, do it.</div>
+            </div>
+            <div class="conv-msg">
+              <div class="conv-avatar ai">⚡</div>
+              <div class="conv-bubble ai">Patched <code>requirements.txt</code> → <code>chromadb==0.4.22</code>, <code>pydantic==1.10.13</code>. Running build now… ✅ Succeeded in 42s.</div>
+            </div>
+          </div>
+          <p style="font-size:0.875rem; color:var(--text-3); margin-bottom:16px;">
+            Genesis reads your filesystem, runs shell commands with approval, debugs build errors, writes code, and commits changes — all from a natural language conversation.
+          </p>
+          <div class="use-case-features">
+            <span class="tag">🔧 Shell execution</span>
+            <span class="tag">📝 File editing</span>
+            <span class="tag">🐳 Docker aware</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Privacy Advocate -->
+      <div class="use-case-hero-card fade-up">
+        <div class="use-case-header">
+          <div class="use-case-emoji">🔒</div>
+          <div class="use-case-title">Privacy-First Computing</div>
+          <div class="use-case-sub">For people who refuse to give their data to Big Tech</div>
+        </div>
+        <div class="use-case-body">
+          <div class="conversation">
+            <div class="conv-msg user">
+              <div class="conv-avatar user">👤</div>
+              <div class="conv-bubble">Summarise my medical documents and flag anything unusual.</div>
+            </div>
+            <div class="conv-msg">
+              <div class="conv-avatar ai">⚡</div>
+              <div class="conv-bubble ai">Reading 3 files from /Documents/Medical/... Your cholesterol is borderline (215 mg/dL, above 200 threshold). All other markers are normal. This analysis stayed entirely on your machine.</div>
+            </div>
+          </div>
+          <p style="font-size:0.875rem; color:var(--text-3); margin-bottom:16px;">
+            Sensitive documents — medical records, financial statements, legal contracts — can be analysed with full AI capability without ever leaving your hardware. No cloud. No logs. No exposure.
+          </p>
+          <div class="use-case-features">
+            <span class="tag">🔒 100% local</span>
+            <span class="tag">🌐 Air-gap capable</span>
+            <span class="tag">📵 Zero telemetry</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Home Lab & Self-Hosting -->
+      <div class="use-case-hero-card fade-up">
+        <div class="use-case-header">
+          <div class="use-case-emoji">🏠</div>
+          <div class="use-case-title">Home Lab & Self-Hosting</div>
+          <div class="use-case-sub">For sysadmins and homelabbers who run their own stack</div>
+        </div>
+        <div class="use-case-body">
+          <div class="conversation">
+            <div class="conv-msg user">
+              <div class="conv-avatar user">👤</div>
+              <div class="conv-bubble">Check disk usage across all my servers and warn me if anything is over 85%.</div>
+            </div>
+            <div class="conv-msg">
+              <div class="conv-avatar ai">⚡</div>
+              <div class="conv-bubble ai">Running <code>df -h</code> on vm-01, vm-02, nas-01... ⚠️ nas-01 /dev/sdb1 is at 91% (1.8TB/2TB). Want me to find what's consuming the most space?</div>
+            </div>
+            <div class="conv-msg user">
+              <div class="conv-avatar user">👤</div>
+              <div class="conv-bubble">Yes and create a cleanup plan.</div>
+            </div>
+            <div class="conv-msg">
+              <div class="conv-avatar ai">⚡</div>
+              <div class="conv-bubble ai">Found 340 GB of Docker image cache and 180 GB unused Plex transcodes. Draft cleanup script ready — needs your approval before I run it.</div>
+            </div>
+          </div>
+          <p style="font-size:0.875rem; color:var(--text-3); margin-bottom:16px;">
+            Deploy Genesis on your home server or NAS. Manage your entire infrastructure through conversation — monitoring, backups, deployments, and incident response.
+          </p>
+          <div class="use-case-features">
+            <span class="tag">🖥️ Server management</span>
+            <span class="tag">🔄 Automation</span>
+            <span class="tag">📊 Monitoring</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Freelancer / Small Business -->
+      <div class="use-case-hero-card fade-up">
+        <div class="use-case-header">
+          <div class="use-case-emoji">💼</div>
+          <div class="use-case-title">Freelancer & Small Business</div>
+          <div class="use-case-sub">For solo operators who need a full back office, solo</div>
+        </div>
+        <div class="use-case-body">
+          <div class="conversation">
+            <div class="conv-msg user">
+              <div class="conv-avatar user">👤</div>
+              <div class="conv-bubble">Generate an invoice for John's website project — 40 hours at £85/hr, project management fee, and send it.</div>
+            </div>
+            <div class="conv-msg">
+              <div class="conv-avatar ai">⚡</div>
+              <div class="conv-bubble ai">Created Invoice_John_Website_v3.html (£3,500 + £350 PM = £3,850). I've pre-filled John's address from your contacts. Want me to email it to john@example.com with your standard payment terms?</div>
+            </div>
+          </div>
+          <p style="font-size:0.875rem; color:var(--text-3); margin-bottom:16px;">
+            From invoicing to client communications, document management, and scheduling — Genesis handles routine business tasks while keeping all your sensitive client data firmly on your own machine.
+          </p>
+          <div class="use-case-features">
+            <span class="tag">📄 Document generation</span>
+            <span class="tag">📧 Email drafting</span>
+            <span class="tag">📁 Client file management</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. Raspberry Pi / IoT -->
+      <div class="use-case-hero-card fade-up">
+        <div class="use-case-header">
+          <div class="use-case-emoji">🍓</div>
+          <div class="use-case-title">Raspberry Pi & IoT</div>
+          <div class="use-case-sub">For makers who want AI in their physical world</div>
+        </div>
+        <div class="use-case-body">
+          <div class="conversation">
+            <div class="conv-msg user">
+              <div class="conv-avatar user">👤</div>
+              <div class="conv-bubble">Hey Genesis — is anyone in the garden?</div>
+            </div>
+            <div class="conv-msg">
+              <div class="conv-avatar ai">⚡</div>
+              <div class="conv-bubble ai">Checking camera feed... I can see what appears to be a person near the shed. Motion detected 2 minutes ago. Snapshot saved to /data/garden/2025-04-13-14-22.jpg.</div>
+            </div>
+          </div>
+          <p style="font-size:0.875rem; color:var(--text-3); margin-bottom:16px;">
+            Run a Pi-optimised Genesis image on a Raspberry Pi 5. Control GPIO pins, read sensor data, interpret camera feeds with Gemma 4's multimodal vision, and automate physical-world tasks.
+          </p>
+          <div class="use-case-features">
+            <span class="tag">🔌 GPIO control</span>
+            <span class="tag">📷 Vision (Gemma 4)</span>
+            <span class="tag">🌡️ Sensor data</span>
+            <span class="tag">🤖 Robotics (ROS2)</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ COMPARISON TABLE ═══ -->
+<section class="section" style="background: var(--bg-alt);">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Comparison</div>
+      <h2 class="text-display">Genesis OS vs<br>the alternatives</h2>
+    </div>
+
+    <div class="card fade-up" style="padding:0;overflow:hidden;">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th class="genesis">Genesis OS</th>
+            <th>ChatGPT</th>
+            <th>GitHub Copilot</th>
+            <th>HomeAssistant AI</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Runs fully offline</td>
+            <td class="genesis yes">✓ Yes</td>
+            <td class="no">✗ No</td>
+            <td class="no">✗ No</td>
+            <td class="partial">~ Partial</td>
+          </tr>
+          <tr>
+            <td>Data stays on your hardware</td>
+            <td class="genesis yes">✓ Always</td>
+            <td class="no">✗ Sent to OpenAI</td>
+            <td class="no">✗ Sent to GitHub</td>
+            <td class="partial">~ Optional</td>
+          </tr>
+          <tr>
+            <td>Persistent cross-session memory</td>
+            <td class="genesis yes">✓ ChromaDB + SQLite</td>
+            <td class="partial">~ Limited</td>
+            <td class="no">✗ No</td>
+            <td class="no">✗ No</td>
+          </tr>
+          <tr>
+            <td>File system access</td>
+            <td class="genesis yes">✓ Full CRUD</td>
+            <td class="no">✗ No (unless plugin)</td>
+            <td class="partial">~ IDE only</td>
+            <td class="partial">~ Config files</td>
+          </tr>
+          <tr>
+            <td>Shell/terminal execution</td>
+            <td class="genesis yes">✓ With approval</td>
+            <td class="no">✗ No</td>
+            <td class="partial">~ IDE tasks</td>
+            <td class="no">✗ No</td>
+          </tr>
+          <tr>
+            <td>Voice control (local)</td>
+            <td class="genesis yes">✓ Whisper + Piper</td>
+            <td class="no">✗ No local voice</td>
+            <td class="no">✗ No</td>
+            <td class="partial">~ Cloud dependent</td>
+          </tr>
+          <tr>
+            <td>Model agnostic (swap freely)</td>
+            <td class="genesis yes">✓ Any Ollama model</td>
+            <td class="no">✗ GPT only</td>
+            <td class="no">✗ Copilot only</td>
+            <td class="partial">~ Limited options</td>
+          </tr>
+          <tr>
+            <td>OS-grade desktop UI</td>
+            <td class="genesis yes">✓ Full shell</td>
+            <td class="no">✗ Chat only</td>
+            <td class="no">✗ IDE only</td>
+            <td class="partial">~ Home dashboard</td>
+          </tr>
+          <tr>
+            <td>Monthly subscription cost</td>
+            <td class="genesis yes">✓ $0 forever</td>
+            <td class="no">$20–200/mo</td>
+            <td class="no">$10–39/mo</td>
+            <td class="yes">✓ $0 (open source)</td>
+          </tr>
+          <tr>
+            <td>Raspberry Pi compatible</td>
+            <td class="genesis yes">✓ Pi-optimised image</td>
+            <td class="no">✗ No</td>
+            <td class="no">✗ No</td>
+            <td class="yes">✓ Yes</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ EXAMPLE CONVERSATIONS ═══ -->
+<section class="section">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Example Interactions</div>
+      <h2 class="text-display">Real tasks. Natural language.</h2>
+    </div>
+
+    <div class="grid-3 stagger">
+      <div class="card fade-up">
+        <div class="card-icon">📋</div>
+        <h3 class="card-title">Research & Synthesis</h3>
+        <div class="conversation" style="margin:12px 0 0;">
+          <div class="conv-msg user">
+            <div class="conv-avatar user" style="width:24px;height:24px;font-size:11px;">👤</div>
+            <div class="conv-bubble" style="font-size:0.78rem;">Summarise all my notes from the last 2 weeks into a brief.</div>
+          </div>
+          <div class="conv-msg">
+            <div class="conv-avatar ai" style="width:24px;height:24px;font-size:11px;">⚡</div>
+            <div class="conv-bubble ai" style="font-size:0.78rem;">Found 14 notes across 3 projects. Key themes: API rate limiting (project A), hiring pipeline (3 candidates shortlisted), server migration due March deadline. Want a formatted PDF?</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card fade-up">
+        <div class="card-icon">🔍</div>
+        <h3 class="card-title">Code Review</h3>
+        <div class="conversation" style="margin:12px 0 0;">
+          <div class="conv-msg user">
+            <div class="conv-avatar user" style="width:24px;height:24px;font-size:11px;">👤</div>
+            <div class="conv-bubble" style="font-size:0.78rem;">Review auth.js and tell me any security issues.</div>
+          </div>
+          <div class="conv-msg">
+            <div class="conv-avatar ai" style="width:24px;height:24px;font-size:11px;">⚡</div>
+            <div class="conv-bubble ai" style="font-size:0.78rem;">Found 2 issues: JWT secret is hardcoded (line 14), and no rate limiting on /login. Want me to fix both and run the tests?</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card fade-up">
+        <div class="card-icon">📊</div>
+        <h3 class="card-title">Data Analysis</h3>
+        <div class="conversation" style="margin:12px 0 0;">
+          <div class="conv-msg user">
+            <div class="conv-avatar user" style="width:24px;height:24px;font-size:11px;">👤</div>
+            <div class="conv-bubble" style="font-size:0.78rem;">What were my top expenses in Q1 from the spreadsheet?</div>
+          </div>
+          <div class="conv-msg">
+            <div class="conv-avatar ai" style="width:24px;height:24px;font-size:11px;">⚡</div>
+            <div class="conv-bubble ai" style="font-size:0.78rem;">Reading expenses_2025.xlsx... Top 3: Software subscriptions £1,240 (31%), Hardware £890 (22%), Travel £655 (16%). Down 8% vs Q4 2024.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card fade-up">
+        <div class="card-icon">📧</div>
+        <h3 class="card-title">Email Drafting</h3>
+        <div class="conversation" style="margin:12px 0 0;">
+          <div class="conv-msg user">
+            <div class="conv-avatar user" style="width:24px;height:24px;font-size:11px;">👤</div>
+            <div class="conv-bubble" style="font-size:0.78rem;">Draft a polite follow-up to the client who hasn't paid invoice #1042.</div>
+          </div>
+          <div class="conv-msg">
+            <div class="conv-avatar ai" style="width:24px;height:24px;font-size:11px;">⚡</div>
+            <div class="conv-bubble ai" style="font-size:0.78rem;">Found invoice #1042 (£2,400, overdue 12 days). Draft ready — professional tone, payment link included. Send or would you like to edit first?</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card fade-up">
+        <div class="card-icon">🖼️</div>
+        <h3 class="card-title">Visual Analysis</h3>
+        <div class="conversation" style="margin:12px 0 0;">
+          <div class="conv-msg user">
+            <div class="conv-avatar user" style="width:24px;height:24px;font-size:11px;">👤</div>
+            <div class="conv-bubble" style="font-size:0.78rem;">What's in this screenshot? [attaches image]</div>
+          </div>
+          <div class="conv-msg">
+            <div class="conv-avatar ai" style="width:24px;height:24px;font-size:11px;">⚡</div>
+            <div class="conv-bubble ai" style="font-size:0.78rem;">It's a database schema diagram. I can see 5 tables: users, orders, products, reviews, and inventory. The foreign key relationships look correct but reviews lacks an index on user_id.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card fade-up">
+        <div class="card-icon">🎙️</div>
+        <h3 class="card-title">Voice Commands</h3>
+        <div class="conversation" style="margin:12px 0 0;">
+          <div class="conv-msg user">
+            <div class="conv-avatar user" style="width:24px;height:24px;font-size:11px;">🎤</div>
+            <div class="conv-bubble" style="font-size:0.78rem;">"Hey Genesis, what commits did I make today?"</div>
+          </div>
+          <div class="conv-msg">
+            <div class="conv-avatar ai" style="width:24px;height:24px;font-size:11px;">⚡</div>
+            <div class="conv-bubble ai" style="font-size:0.78rem;">4 commits today. Latest: "fix: memory leak in daemon event bus" — 22 minutes ago. All tests passing.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ WHO USES IT ═══ -->
+<section class="section" style="background: var(--bg-alt);">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">For Everyone</div>
+      <h2 class="text-display">If you own a computer,<br>Genesis OS is for you</h2>
+    </div>
+
+    <div class="grid-4 stagger">
+      <div class="card fade-up" style="text-align:center; padding:24px 20px;">
+        <div style="font-size:2.4rem; margin-bottom:10px;">👩‍💻</div>
+        <div class="card-title">Developers</div>
+        <p class="card-desc" style="font-size:0.82rem;">Code review, debugging, shell automation, and a dev environment that understands your entire project history.</p>
+      </div>
+      <div class="card fade-up" style="text-align:center; padding:24px 20px;">
+        <div style="font-size:2.4rem; margin-bottom:10px;">🎓</div>
+        <div class="card-title">Students & Researchers</div>
+        <p class="card-desc" style="font-size:0.82rem;">Research assistance, paper summarisation, citation management, and a study companion that remembers everything you've read.</p>
+      </div>
+      <div class="card fade-up" style="text-align:center; padding:24px 20px;">
+        <div style="font-size:2.4rem; margin-bottom:10px;">🏢</div>
+        <div class="card-title">Small Teams</div>
+        <p class="card-desc" style="font-size:0.82rem;">Self-host for your team. No data leaves your network. Shared memory. Custom tools for your specific workflow.</p>
+      </div>
+      <div class="card fade-up" style="text-align:center; padding:24px 20px;">
+        <div style="font-size:2.4rem; margin-bottom:10px;">🔬</div>
+        <div class="card-title">Makers & Hackers</div>
+        <p class="card-desc" style="font-size:0.82rem;">Raspberry Pi GPIO, camera vision, sensor data, home automation, and robotics — all through natural conversation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section">
+  <div class="container">
+    <div class="cta-banner fade-up">
+      <h2>Which use case fits you?</h2>
+      <p>All of the above and more start with a single <code style="background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:4px;font-family:monospace;">docker compose up</code>.</p>
+      <div class="flex-center gap-12" style="flex-wrap:wrap;">
+        <a href="architecture.html#quickstart" class="btn btn-white btn-lg">Get Started</a>
+        <a href="security.html" class="btn btn-outline-white btn-lg">Security & Privacy →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="nav-logo" style="display:inline-flex;"><div class="nav-logo-icon">⚡</div><span>Genesis OS</span></a>
+        <p>AI-native operating system. Local-first. Privacy-preserving. Built by Shahansha Shaik.</p>
+        <div class="footer-social">
+          <a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener" aria-label="GitHub">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          </a>
+        </div>
+      </div>
+      <div class="footer-col"><h4>Product</h4><ul>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="use-cases.html">Use Cases</a></li>
+        <li><a href="roadmap.html">Roadmap</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Learn</h4><ul>
+        <li><a href="architecture.html#quickstart">Quick Start</a></li>
+        <li><a href="security.html">Security</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Community</h4><ul>
+        <li><a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/shahansha/genesis-os/issues" target="_blank" rel="noopener">Issues</a></li>
+        <li><a href="roadmap.html#contribute">Contribute</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 Genesis OS. MIT License.</p>
+      <div class="footer-bottom-links">
+        <a href="security.html#privacy">Privacy</a>
+        <a href="https://github.com/shahansha/genesis-os/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>

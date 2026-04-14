@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { stagger, staggerItem } from '../../design/animations';
+import { createOfficeTemplate } from './officeTemplates';
+
+const OFFICE_EXTENSIONS = new Set(['doc', 'docx', 'xlsx', 'xls', 'ppt', 'pptx', 'md', 'markdown', 'html', 'htm', 'txt', 'rtf', 'csv']);
 
 function getIcon(item) {
   const tone = item.type === 'dir'
@@ -79,7 +82,7 @@ export default function FileManager({ winId }) {
     const ext = item.ext;
     if (ext === 'pdf') {
       window._genesisOpenApp?.('pdf', { filePath: item.path });
-    } else if (['docx', 'xlsx', 'pptx'].includes(ext)) {
+    } else if (OFFICE_EXTENSIONS.has(ext)) {
       window._genesisOpenApp?.('office', { filePath: item.path });
     } else {
       window._genesisOpenApp?.('editor', { filePath: item.path });
@@ -100,12 +103,30 @@ export default function FileManager({ winId }) {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } else {
-        const res = await fetch('/api/fs/write', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: fullPath, content: '' }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const ext = trimmed.split('.').pop().toLowerCase();
+        const officeBlob = await createOfficeTemplate(ext);
+
+        if (officeBlob) {
+          // Office files must be written as binary to be valid ZIP archives
+          const arrayBuffer = await officeBlob.arrayBuffer();
+          const uint8 = new Uint8Array(arrayBuffer);
+          let binary = '';
+          for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
+          const base64 = btoa(binary);
+          const res = await fetch('/api/fs/write-binary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: fullPath, base64 }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        } else {
+          const res = await fetch('/api/fs/write', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: fullPath, content: '' }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        }
       }
 
       setPendingAction(null);

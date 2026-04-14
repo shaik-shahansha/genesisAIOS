@@ -1,5 +1,4 @@
 ﻿import React, { useEffect, useState, useRef } from 'react';
-import { motion } from 'framer-motion';
 
 export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }) {
   const startingUrl = initialUrl || initialUrlAlias || '';
@@ -8,14 +7,12 @@ export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }
   const [summary, setSummary] = useState('');
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [question, setQuestion] = useState('');
-  const [iframeLoaded, setIframeLoaded] = useState(false);
   const [iframeBlocked, setIframeBlocked] = useState(false);
   const iframeRef = useRef(null);
 
   const navigate = (target) => {
     let nav = target.trim();
     if (!nav) return;
-    // If not a URL, treat as DuckDuckGo search
     if (!nav.startsWith('http://') && !nav.startsWith('https://') && nav.includes(' ')) {
       nav = `https://duckduckgo.com/?q=${encodeURIComponent(nav)}`;
     } else if (!nav.startsWith('http://') && !nav.startsWith('https://')) {
@@ -24,7 +21,6 @@ export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }
     setCurrentUrl(nav);
     setUrl(nav);
     setSummary('');
-    setIframeLoaded(false);
     setIframeBlocked(false);
   };
 
@@ -33,6 +29,18 @@ export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }
       navigate(startingUrl);
     }
   }, [startingUrl]);
+
+  // Sync URL bar when the iframe navigates via service worker redirects
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.data?.type === 'genesis-nav' && e.data.url) {
+        setUrl(e.data.url);
+        setCurrentUrl(e.data.url);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, []);
 
   const proxyUrl = currentUrl
     ? `/api/browse/proxy?url=${encodeURIComponent(currentUrl)}`
@@ -64,16 +72,32 @@ export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }
       <div className="flex items-center gap-2 px-3 py-2 border-b border-white/8">
         <button
           onClick={() => iframeRef.current?.contentWindow?.history.back()}
-          className="text-white/50 hover:text-white text-lg px-1"
-        >â€¹</button>
+          className="text-white/50 hover:text-white px-1"
+          title="Back"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10 12L6 8l4-4"/>
+          </svg>
+        </button>
         <button
           onClick={() => iframeRef.current?.contentWindow?.history.forward()}
-          className="text-white/50 hover:text-white text-lg px-1"
-        >â€º</button>
+          className="text-white/50 hover:text-white px-1"
+          title="Forward"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 12l4-4-4-4"/>
+          </svg>
+        </button>
         <button
           onClick={() => navigate(currentUrl)}
-          className="text-white/50 hover:text-white text-sm px-1"
-        >â†»</button>
+          className="text-white/50 hover:text-white px-1"
+          title="Reload"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M13.5 6A6 6 0 1 0 12 11"/>
+            <path d="M13.5 2v4h-4"/>
+          </svg>
+        </button>
 
         <form
           onSubmit={(e) => { e.preventDefault(); navigate(url); }}
@@ -82,7 +106,7 @@ export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="Enter URL or search termâ€¦"
+            placeholder="Enter URL or search term..."
             className="flex-1 bg-white/5 rounded-lg px-3 py-1.5 text-sm text-white outline-none placeholder:text-white/30 border border-white/10 focus:border-accent"
           />
         </form>
@@ -90,18 +114,19 @@ export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }
         <button
           onClick={() => summarize()}
           disabled={!currentUrl || loadingSummary}
-          className="px-3 py-1.5 bg-accent/80 hover:bg-accent rounded-lg text-white text-xs transition-colors disabled:opacity-40 whitespace-nowrap"
+          className="px-3 py-1.5 bg-accent/80 hover:bg-accent rounded-lg text-white text-xs transition-colors disabled:opacity-40 whitespace-nowrap flex items-center gap-1"
           title="AI summarize this page"
         >
-          {loadingSummary ? 'â€¦' : 'âœ¦ AI'}
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.2 4.8L12 6l-4.8 1.2L6 12 4.8 7.2 0 6l4.8-1.2z"/></svg>
+          {loadingSummary ? 'AI...' : 'AI'}
         </button>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Browser frame */}
-        <div className="flex-1 relative bg-base-200">
+        <div className="flex-1 relative bg-white">
           {!currentUrl && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/30 gap-4">
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/30 gap-4 bg-[#12121f]">
               <div className="w-14 h-14 rounded-2xl glass flex items-center justify-center text-white/70">
                 <svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="10" cy="10" r="7.5" />
@@ -123,13 +148,16 @@ export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }
             </div>
           )}
           {currentUrl && iframeBlocked && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50 gap-4 p-8 text-center">
-              <div className="text-4xl">ðŸš«</div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50 gap-4 p-8 text-center bg-[#12121f]">
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-white/30">
+                <circle cx="24" cy="24" r="20"/>
+                <path d="M8.5 8.5l31 31"/>
+              </svg>
               <p className="text-sm font-medium text-white/70">This site blocks embedded viewing</p>
               <p className="text-xs text-white/40 max-w-xs">
                 {currentUrl.includes('google.com')
-                  ? 'Google disables iframe embedding. Try DuckDuckGo instead, or use the AI summary button above.'
-                  : 'This site uses X-Frame-Options to prevent embedding. You can still use the AI summary button above.'}
+                  ? 'Google disables iframe embedding. Try DuckDuckGo instead, or use the AI button above to summarize.'
+                  : 'This site cannot be previewed here. Open it in a new tab or use the AI button to summarize.'}
               </p>
               <div className="flex gap-2 flex-wrap justify-center">
                 <button
@@ -144,7 +172,7 @@ export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }
                   rel="noopener noreferrer"
                   className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs"
                 >
-                  Open in new tab â†—
+                  Open in new tab &#8599;
                 </a>
               </div>
             </div>
@@ -154,22 +182,19 @@ export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }
               ref={iframeRef}
               src={proxyUrl}
               title="AI Browser"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
-              className="w-full h-full border-0 bg-white"
+              className="w-full h-full border-0"
               onLoad={() => {
-                setIframeLoaded(true);
                 // Detect if the iframe loaded an error/blocked page
                 try {
                   const doc = iframeRef.current?.contentDocument;
                   if (doc) {
                     const body = doc.body?.innerText || '';
-                    if (body.includes('refused to connect') || body.includes('ERR_') ||
-                        (doc.title && doc.title.includes('refused'))) {
+                    if (body.startsWith('Proxy failed:') || body.includes('ERR_') || body.includes('refused to connect')) {
                       setIframeBlocked(true);
                     }
                   }
                 } catch {
-                  // cross-origin: can't read â€” page loaded OK
+                  // cross-origin iframe — loaded OK from proxy
                 }
               }}
               onError={() => setIframeBlocked(true)}
@@ -181,8 +206,11 @@ export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }
         {summary && (
           <div className="w-72 border-l border-white/8 flex flex-col overflow-hidden">
             <div className="px-3 py-2 border-b border-white/8 flex items-center justify-between">
-              <span className="text-xs text-white/60 font-medium">âœ¦ AI Summary</span>
-              <button onClick={() => setSummary('')} className="text-white/30 hover:text-white/60 text-sm">âœ•</button>
+              <span className="text-xs text-white/60 font-medium flex items-center gap-1">
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" className="text-accent"><path d="M6 0l1.2 4.8L12 6l-4.8 1.2L6 12 4.8 7.2 0 6l4.8-1.2z"/></svg>
+                AI Summary
+              </span>
+              <button onClick={() => setSummary('')} className="text-white/30 hover:text-white/60 text-sm leading-none">&#10005;</button>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               <p className="text-white/80 text-xs leading-relaxed whitespace-pre-wrap">{summary}</p>
@@ -193,13 +221,17 @@ export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { summarize(question); setQuestion(''); } }}
-                  placeholder="Ask about this pageâ€¦"
+                  placeholder="Ask about this page..."
                   className="flex-1 bg-white/5 rounded px-2 py-1 text-xs text-white outline-none placeholder:text-white/30 border border-white/8"
                 />
                 <button
                   onClick={() => { summarize(question); setQuestion(''); }}
                   className="px-2 py-1 bg-accent rounded text-xs text-white"
-                >â†’</button>
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 10V2M2 6l4-4 4 4"/>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>

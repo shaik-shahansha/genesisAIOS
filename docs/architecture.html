@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Genesis OS architecture — how the daemon, memory, voice, and UI layers work together on your local hardware." />
+  <title>Architecture — Genesis OS</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%237c3aed'/><text y='24' x='4' font-size='22'>⚡</text></svg>" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    .quickstart-steps {
+      counter-reset: step;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .quickstart-step {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    .quickstart-step-num {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: var(--accent-100);
+      color: var(--accent);
+      font-size: 1.2rem;
+      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      border: 2px solid var(--border-accent);
+    }
+    .quickstart-step-content h3 { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
+    .quickstart-step-content p  { font-size: 0.875rem; color: var(--text-3); line-height: 1.65; }
+
+    .env-table { width: 100%; border-collapse: collapse; }
+    .env-table th, .env-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.875rem; }
+    .env-table th { background: var(--bg-alt); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-3); }
+    .env-table td:first-child { font-family: var(--font-mono); font-size: 0.82rem; color: var(--accent); }
+    .env-table td:nth-child(2) { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-3); }
+    .env-table tr:last-child td { border-bottom: none; }
+
+    .key-files { display: flex; flex-direction: column; gap: 8px; }
+    .key-file {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      transition: border-color var(--dur) var(--ease);
+    }
+    .key-file:hover { border-color: var(--border-accent); }
+    .key-file-path { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent); flex: 1; }
+    .key-file-desc { font-size: 0.82rem; color: var(--text-3); }
+
+    .arch-flow {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      overflow-x: auto;
+      padding: 8px 0;
+    }
+    .arch-flow-node {
+      flex-shrink: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px 18px;
+      text-align: center;
+      min-width: 120px;
+    }
+    .arch-flow-node .icon { font-size: 1.8rem; margin-bottom: 6px; }
+    .arch-flow-node .label { font-size: 0.78rem; font-weight: 600; color: var(--text-2); }
+    .arch-flow-node .sublabel { font-size: 0.68rem; color: var(--text-3); margin-top: 2px; }
+    .arch-flow-arrow {
+      flex-shrink: 0;
+      width: 40px;
+      text-align: center;
+      font-size: 1.2rem;
+      color: var(--text-4);
+    }
+    .arch-flow-node.highlight { border-color: var(--border-accent); background: var(--accent-50); }
+
+    @media (max-width: 640px) {
+      .quickstart-step { grid-template-columns: 1fr; }
+      .quickstart-step-num { width: 36px; height: 36px; font-size: 1rem; border-radius: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo"><div class="nav-logo-icon">⚡</div><span>Genesis OS</span></a>
+    <div class="nav-links">
+      <a href="features.html"     class="nav-link" data-page="features.html">Features</a>
+      <a href="architecture.html" class="nav-link" data-page="architecture.html">Architecture</a>
+      <a href="use-cases.html"    class="nav-link" data-page="use-cases.html">Use Cases</a>
+      <a href="security.html"     class="nav-link" data-page="security.html">Security</a>
+      <a href="roadmap.html"      class="nav-link" data-page="roadmap.html">Roadmap</a>
+    </div>
+    <div class="nav-actions">
+      <button class="nav-theme-btn">🌙</button>
+      <a href="https://github.com/shahansha/genesis-os" class="nav-github" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        <span>GitHub</span>
+      </a>
+      <button class="nav-hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</nav>
+<div class="nav-mobile" id="mobile-nav">
+  <a href="features.html" class="nav-link" data-page="features.html">Features</a>
+  <a href="architecture.html" class="nav-link" data-page="architecture.html">Architecture</a>
+  <a href="use-cases.html" class="nav-link" data-page="use-cases.html">Use Cases</a>
+  <a href="security.html" class="nav-link" data-page="security.html">Security</a>
+  <a href="roadmap.html" class="nav-link" data-page="roadmap.html">Roadmap</a>
+</div>
+
+<main>
+
+<!-- PAGE HERO -->
+<section class="page-hero">
+  <div class="container">
+    <div class="page-hero-label">Architecture</div>
+    <h1>Built like an OS.<br><span class="gradient-text">Architected for AI.</span></h1>
+    <p>Every design decision in Genesis OS prioritises local-first operation, persistent memory, and zero-compromise privacy — from the daemon kernel to the Docker image.</p>
+    <div class="flex-center gap-12" style="flex-wrap:wrap;">
+      <a href="#quickstart" class="btn btn-primary">Quick Start Guide</a>
+      <a href="#stack" class="btn btn-secondary">System Stack ↓</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ QUICK START ═══ -->
+<section class="section" id="quickstart">
+  <div class="container">
+    <div class="grid-2" style="gap:80px; align-items:start;">
+      <div>
+        <div class="section-label" style="justify-content:flex-start; margin-bottom:16px;">
+          Quick Start
+        </div>
+        <h2 class="text-h1" style="margin-bottom:24px;">Up and running<br>in 4 steps</h2>
+
+        <div class="quickstart-steps">
+          <div class="quickstart-step fade-up">
+            <div class="quickstart-step-num">1</div>
+            <div class="quickstart-step-content">
+              <h3>Prerequisites</h3>
+              <p>Install <strong>Docker Desktop</strong> (or Docker Engine + Compose). That's all. No Node.js, Python, or Ollama needed on your host.</p>
+            </div>
+          </div>
+          <div class="quickstart-step fade-up">
+            <div class="quickstart-step-num">2</div>
+            <div class="quickstart-step-content">
+              <h3>Clone the repository</h3>
+              <p>Clone from GitHub. The repository includes docker-compose.yml, all Dockerfiles, and the workspace directory.</p>
+            </div>
+          </div>
+          <div class="quickstart-step fade-up">
+            <div class="quickstart-step-num">3</div>
+            <div class="quickstart-step-content">
+              <h3>Start the stack</h3>
+              <p>Run <code style="font-family:var(--font-mono);font-size:0.85em;background:var(--bg-deeper);padding:2px 6px;border-radius:4px;">docker compose up</code> in the project root. Ollama automatically pulls <strong>gemma4:e4b</strong> on first boot (~9.6 GB download).</p>
+            </div>
+          </div>
+          <div class="quickstart-step fade-up">
+            <div class="quickstart-step-num">4</div>
+            <div class="quickstart-step-content">
+              <h3>Open Genesis OS</h3>
+              <p>Navigate to <strong>http://localhost:3000</strong> in any browser. The full OS desktop opens immediately.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fade-up">
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="code-block-title">shell — complete setup</span>
+            <button class="code-block-copy">Copy</button>
+          </div>
+          <pre><span class="cm"># 1. Clone</span>
+<span class="fn">git</span> clone https://github.com/shahansha/genesis-os
+<span class="fn">cd</span> genesis-os
+
+<span class="cm"># 2. (Optional) customize model</span>
+<span class="fn">cp</span> .env.example .env
+<span class="cm"># Edit .env: GENESIS_MODEL=gemma4:e2b for lighter CPUs</span>
+
+<span class="cm"># 3. Start everything</span>
+<span class="fn">docker</span> compose up
+
+<span class="cm"># First run downloads the model — be patient</span>
+<span class="cm"># Subsequent starts are instant</span>
+
+<span class="cm"># 4. Open in browser</span>
+<span class="cm"># → http://localhost:3000</span>
+
+<span class="cm"># ─────────────────────────────</span>
+<span class="cm"># Optional: run in background</span>
+<span class="fn">docker</span> compose up -d
+
+<span class="cm"># View logs</span>
+<span class="fn">docker</span> compose logs -f daemon</pre>
+        </div>
+
+        <div class="card" style="margin-top: 20px; border-left: 3px solid var(--accent);">
+          <div class="card-title" style="font-size:0.875rem;">💡 Tip: Lighter model for slower machines</div>
+          <p class="card-desc" style="font-size:0.82rem; margin-top:6px;">Set <code style="font-family:var(--font-mono);font-size:0.85em;background:var(--bg-deeper);padding:2px 5px;border-radius:4px;">GENESIS_MODEL=gemma4:e2b</code> in your <code style="font-family:var(--font-mono);font-size:0.85em;background:var(--bg-deeper);padding:2px 5px;border-radius:4px;">.env</code> file. Same features, 7.2 GB download, faster on CPU.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SYSTEM LAYERS ═══ -->
+<section class="section" style="background: var(--bg-alt);" id="stack">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">System Architecture</div>
+      <h2 class="text-display">Five layers.<br>One coherent system.</h2>
+      <p class="text-lead" style="margin-top:16px;">
+        Genesis OS is composed of five loosely-coupled layers communicating over a shared event bus and HTTP APIs.
+        Each layer can be upgraded or replaced independently — the interfaces never change.
+      </p>
+    </div>
+
+    <div class="arch-layers fade-up">
+
+      <div class="arch-layer">
+        <div class="arch-layer-header">
+          <div class="arch-layer-name">
+            <div class="arch-layer-icon">⚛️</div>
+            UI Layer
+          </div>
+          <span class="arch-layer-tech">React 18 + Vite + Framer Motion</span>
+        </div>
+        <div class="arch-layer-body">
+          <span class="arch-chip">Desktop.jsx</span>
+          <span class="arch-chip">Taskbar.jsx</span>
+          <span class="arch-chip">WindowManager.jsx</span>
+          <span class="arch-chip">AppLauncher.jsx</span>
+          <span class="arch-chip">AIOrb.jsx</span>
+          <span class="arch-chip">NotificationPanel.jsx</span>
+          <span class="arch-chip">FileManager</span>
+          <span class="arch-chip">Terminal (xterm.js)</span>
+          <span class="arch-chip">PDF Viewer</span>
+          <span class="arch-chip">Monaco Editor</span>
+        </div>
+      </div>
+
+      <div style="text-align:center; padding: 8px; color: var(--text-4); font-size: 1.4rem;">↕</div>
+
+      <div class="arch-layer" style="border-left: 3px solid var(--accent);">
+        <div class="arch-layer-header">
+          <div class="arch-layer-name">
+            <div class="arch-layer-icon" style="background: var(--accent-100);">⚡</div>
+            Daemon Layer (OS Kernel)
+          </div>
+          <span class="arch-layer-tech">Node.js + Express + EventEmitter Bus</span>
+        </div>
+        <div class="arch-layer-body">
+          <span class="arch-chip">Event Bus (bus.js)</span>
+          <span class="arch-chip">HTTP API :3000</span>
+          <span class="arch-chip">WebSocket Shell PTY</span>
+          <span class="arch-chip">Agentic Loop</span>
+          <span class="arch-chip">Tool Registry</span>
+          <span class="arch-chip">File System API</span>
+          <span class="arch-chip">Auth Middleware</span>
+          <span class="arch-chip">SQLite (better-sqlite3)</span>
+          <span class="arch-chip">File Watcher (chokidar)</span>
+          <span class="arch-chip">Service Manager</span>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top: 12px;">
+        <div class="arch-layer" id="memory">
+          <div class="arch-layer-header">
+            <div class="arch-layer-name">
+              <div class="arch-layer-icon" style="background:#d1fae5;">🧠</div>
+              Memory Sidecar
+            </div>
+            <span class="arch-layer-tech">Python + FastAPI :7701</span>
+          </div>
+          <div class="arch-layer-body">
+            <span class="arch-chip">ChromaDB (vector)</span>
+            <span class="arch-chip">sentence-transformers</span>
+            <span class="arch-chip">SQLite history</span>
+            <span class="arch-chip">Context compression</span>
+            <span class="arch-chip">Identity profile</span>
+          </div>
+        </div>
+
+        <div class="arch-layer" id="voice">
+          <div class="arch-layer-header">
+            <div class="arch-layer-name">
+              <div class="arch-layer-icon" style="background:#dbeafe;">🎤</div>
+              Voice Sidecar
+            </div>
+            <span class="arch-layer-tech">Python + FastAPI :7702</span>
+          </div>
+          <div class="arch-layer-body">
+            <span class="arch-chip">faster-whisper STT</span>
+            <span class="arch-chip">Piper TTS</span>
+            <span class="arch-chip">openWakeWord</span>
+            <span class="arch-chip">Web Audio API</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center; padding: 8px; color: var(--text-4); font-size: 1.4rem;">↕</div>
+
+      <div class="arch-layer">
+        <div class="arch-layer-header">
+          <div class="arch-layer-name">
+            <div class="arch-layer-icon" style="background:#fef3c7;">🦙</div>
+            LLM Layer
+          </div>
+          <span class="arch-layer-tech">Ollama :11434 (OpenAI-compatible)</span>
+        </div>
+        <div class="arch-layer-body">
+          <span class="arch-chip">gemma4:e4b (default)</span>
+          <span class="arch-chip">gemma4:e2b</span>
+          <span class="arch-chip">qwen3:8b</span>
+          <span class="arch-chip">mistral</span>
+          <span class="arch-chip">phi-4</span>
+          <span class="arch-chip">llama3</span>
+          <span class="arch-chip">Any Ollama model</span>
+          <span class="arch-chip">Streaming responses</span>
+          <span class="arch-chip">Function calling</span>
+          <span class="arch-chip">Multimodal (images)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ EVENT BUS ═══ -->
+<section class="section">
+  <div class="container">
+    <div class="feature-split">
+      <div class="feature-content fade-up">
+        <div class="section-label">Event Bus</div>
+        <h2 class="feature-title">The nervous system<br>of Genesis OS</h2>
+        <p class="feature-desc">
+          All internal communication flows through a central EventEmitter bus — never through direct function calls between packages.
+          This loose coupling means any component can be upgraded, replaced, or extended without touching other parts of the system.
+        </p>
+        <ul class="feature-list">
+          <li>Daemon never crashes — all errors caught, logged, recovered</li>
+          <li>File watcher events flow through bus to memory indexer</li>
+          <li>Tool execution emits <code style="font-family:var(--font-mono);font-size:0.85em;background:var(--bg-deeper);padding:2px 5px;border-radius:4px;">approval_required</code> events</li>
+          <li>Voice wakeword detection fires via bus to UI</li>
+          <li>LLM streaming chunks pushed to connected WebSocket clients</li>
+          <li>Proactive cron jobs emit scheduled messages through bus</li>
+        </ul>
+      </div>
+
+      <div class="feature-visual fade-up">
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="code-block-title">packages/daemon/src/bus.js</span>
+            <button class="code-block-copy">Copy</button>
+          </div>
+          <pre><span class="cm">// The internal event bus</span>
+<span class="kw">const</span> { EventEmitter } = <span class="fn">require</span>(<span class="str">'events'</span>);
+<span class="kw">const</span> bus = <span class="kw">new</span> <span class="fn">EventEmitter</span>();
+bus.<span class="fn">setMaxListeners</span>(<span class="num">50</span>);
+<span class="kw">module</span>.exports = bus;
+
+<span class="cm">// ────────────────────────────</span>
+<span class="cm">// Emitting events</span>
+bus.<span class="fn">emit</span>(<span class="str">'approval_required'</span>, {
+  tool: <span class="str">'run_shell'</span>,
+  args: { cmd: <span class="str">'rm -rf /tmp/old'</span> },
+  resolve, reject
+});
+
+<span class="cm">// ────────────────────────────</span>
+<span class="cm">// Listening to events</span>
+bus.<span class="fn">on</span>(<span class="str">'file:changed'</span>, <span class="kw">async</span> ({ path }) => {
+  <span class="kw">await</span> memory.<span class="fn">index</span>(path);
+});
+
+bus.<span class="fn">on</span>(<span class="str">'wakeword:detected'</span>, () => {
+  voice.<span class="fn">startListening</span>();
+});</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ AGENTIC LOOP ═══ -->
+<section class="section" style="background: var(--bg-alt);">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Agentic Loop</div>
+      <h2 class="text-display">Reason → Act → Observe.<br>Repeat.</h2>
+    </div>
+
+    <div class="arch-flow fade-up" style="justify-content:center; flex-wrap:wrap; gap:8px; padding:24px 0;">
+      <div class="arch-flow-node highlight">
+        <div class="icon">👤</div>
+        <div class="label">User Input</div>
+        <div class="sublabel">text or voice</div>
+      </div>
+      <div class="arch-flow-arrow">→</div>
+      <div class="arch-flow-node">
+        <div class="icon">🧠</div>
+        <div class="label">Memory Retrieve</div>
+        <div class="sublabel">ChromaDB search</div>
+      </div>
+      <div class="arch-flow-arrow">→</div>
+      <div class="arch-flow-node highlight">
+        <div class="icon">🦙</div>
+        <div class="label">LLM Reason</div>
+        <div class="sublabel">Gemma 4 function call</div>
+      </div>
+      <div class="arch-flow-arrow">→</div>
+      <div class="arch-flow-node">
+        <div class="icon">✅</div>
+        <div class="label">Approval?</div>
+        <div class="sublabel">if destructive</div>
+      </div>
+      <div class="arch-flow-arrow">→</div>
+      <div class="arch-flow-node highlight">
+        <div class="icon">🔧</div>
+        <div class="label">Tool Execute</div>
+        <div class="sublabel">via registry</div>
+      </div>
+      <div class="arch-flow-arrow">→</div>
+      <div class="arch-flow-node">
+        <div class="icon">👁️</div>
+        <div class="label">Observe</div>
+        <div class="sublabel">tool result</div>
+      </div>
+      <div class="arch-flow-arrow">→</div>
+      <div class="arch-flow-node highlight">
+        <div class="icon">💬</div>
+        <div class="label">Respond</div>
+        <div class="sublabel">stream to UI</div>
+      </div>
+      <div class="arch-flow-arrow">→</div>
+      <div class="arch-flow-node">
+        <div class="icon">💾</div>
+        <div class="label">Store Memory</div>
+        <div class="sublabel">SQLite + ChromaDB</div>
+      </div>
+    </div>
+
+    <div class="grid-2 stagger" style="margin-top:48px;">
+      <div class="card fade-up">
+        <div class="card-icon">🔄</div>
+        <h3 class="card-title">Multi-step reasoning</h3>
+        <p class="card-desc">The agentic loop continues calling tools until the task is complete or needs user input. "Summarise all invoices in my Documents folder" triggers file enumeration, reading, and synthesis automatically.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">🛡️</div>
+        <h3 class="card-title">Approval gates</h3>
+        <p class="card-desc">Before any tool with <code style="font-family:var(--font-mono);font-size:0.85em;">requiresApproval: true</code> runs, the UI shows a confirmation card. You see exactly what command will run and can cancel or approve.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">⏱️</div>
+        <h3 class="card-title">All requests have timeouts</h3>
+        <p class="card-desc">Every Ollama call, ChromaDB query, and external fetch has an AbortSignal timeout. If any service is slow or down, Genesis degrades gracefully — it never hangs indefinitely.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">📡</div>
+        <h3 class="card-title">Streaming to UI</h3>
+        <p class="card-desc">LLM output streams token-by-token via Server-Sent Events. Tool execution progress streams in real-time. You never stare at a loading spinner wondering what's happening.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ DOCKER COMPOSE ═══ -->
+<section class="section">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Docker Deployment</div>
+      <h2 class="text-display">One file.<br>Complete stack.</h2>
+    </div>
+
+    <div class="grid-2 stagger" style="align-items:start;">
+      <div class="fade-up">
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="code-block-title">docker/docker-compose.yml</span>
+            <button class="code-block-copy">Copy</button>
+          </div>
+          <pre><span class="kw">services</span>:
+  <span class="fn">ollama</span>:
+    image: ollama/ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports: [<span class="str">"11434:11434"</span>]
+    entrypoint: ollama-entrypoint.sh
+
+  <span class="fn">daemon</span>:
+    build: . <span class="cm"># Node.js daemon</span>
+    ports: [<span class="str">"3000:3000"</span>]
+    environment:
+      GENESIS_MODEL: <span class="str">${GENESIS_MODEL:-gemma4:e4b}</span>
+      OLLAMA_BASE_URL: http://ollama:11434
+    depends_on: [ollama, memory]
+    volumes:
+      - ./docker/workspace:/workspace
+
+  <span class="fn">memory</span>:
+    build: Dockerfile.memory <span class="cm"># Python sidecar</span>
+    ports: [<span class="str">"7701:7701"</span>]
+    volumes:
+      - genesis_data:/data
+
+  <span class="fn">voice</span>:
+    build: Dockerfile.voice <span class="cm"># Python sidecar</span>
+    ports: [<span class="str">"7702:7702"</span>]
+
+<span class="kw">volumes</span>:
+  ollama_data:
+  genesis_data:</pre>
+        </div>
+      </div>
+
+      <div>
+        <div class="card fade-up" style="margin-bottom:16px;">
+          <div class="card-icon">🐳</div>
+          <h3 class="card-title">Five services, zero configuration</h3>
+          <p class="card-desc">Ollama, daemon, memory, voice, and the UI all start with a single command. Service dependencies are declared in compose — everything starts in the right order automatically.</p>
+        </div>
+        <div class="card fade-up" style="margin-bottom:16px;">
+          <div class="card-icon">📦</div>
+          <h3 class="card-title">Persistent volumes</h3>
+          <p class="card-desc">Your memories, conversation history, and model weights are stored in named Docker volumes. They survive container restarts and upgrades — data is never lost.</p>
+        </div>
+        <div class="card fade-up">
+          <div class="card-icon">🌐</div>
+          <h3 class="card-title">Works without GPU</h3>
+          <p class="card-desc">Gemma 4's MoE architecture activates only ~4B parameters at inference. Fast enough for real conversations on a modern laptop CPU. No NVIDIA card required.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ENV VARS ═══ -->
+<section class="section" style="background: var(--bg-alt);" id="env">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Configuration</div>
+      <h2 class="text-display">Everything configurable.<br>Nothing hardcoded.</h2>
+    </div>
+
+    <div class="card fade-up" style="padding:0; overflow:hidden;">
+      <table class="env-table">
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>GENESIS_MODEL</td><td>gemma4:e4b</td><td>Ollama model tag — any model works</td></tr>
+          <tr><td>OLLAMA_BASE_URL</td><td>http://localhost:11434</td><td>Ollama API base URL</td></tr>
+          <tr><td>GENESIS_PORT</td><td>3000</td><td>Daemon HTTP port</td></tr>
+          <tr><td>GENESIS_DATA_DIR</td><td>./data</td><td>All persistent data (SQLite, ChromaDB)</td></tr>
+          <tr><td>MEMORY_SERVICE_URL</td><td>http://localhost:7701</td><td>Python memory sidecar endpoint</td></tr>
+          <tr><td>VOICE_SERVICE_URL</td><td>http://localhost:7702</td><td>Python voice sidecar endpoint</td></tr>
+          <tr><td>GENESIS_PROJECT_ROOT</td><td>./workspace</td><td>Directory Genesis watches and can edit</td></tr>
+          <tr><td>GENESIS_USER_NAME</td><td>User</td><td>Your name for the identity profile</td></tr>
+          <tr><td>WHISPER_MODEL</td><td>base</td><td>tiny | base | small | medium</td></tr>
+          <tr><td>TTS_VOICE</td><td>en_US-lessac-medium</td><td>Piper voice model identifier</td></tr>
+          <tr><td>GENESIS_VOICE_ENABLED</td><td>true</td><td>Enable/disable voice sidecars</td></tr>
+          <tr><td>GENESIS_APPROVAL_MODE</td><td>true</td><td>Require approval for destructive tools</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ KEY FILES ═══ -->
+<section class="section">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Repository Structure</div>
+      <h2 class="text-display">Where everything lives</h2>
+    </div>
+
+    <div class="grid-2 stagger" style="align-items:start;">
+      <div>
+        <h3 class="text-h3" style="margin-bottom:16px;">Daemon (Node.js)</h3>
+        <div class="key-files fade-up">
+          <div class="key-file"><span class="key-file-path">packages/daemon/src/index.js</span><span class="key-file-desc">Entry point — starts everything</span></div>
+          <div class="key-file"><span class="key-file-path">packages/daemon/src/bus.js</span><span class="key-file-desc">Internal event bus</span></div>
+          <div class="key-file"><span class="key-file-path">packages/daemon/src/llm/client.js</span><span class="key-file-desc">All LLM calls route here</span></div>
+          <div class="key-file"><span class="key-file-path">packages/daemon/src/agent/loop.js</span><span class="key-file-desc">Reason → tool → observe loop</span></div>
+          <div class="key-file"><span class="key-file-path">packages/daemon/src/routes/fs.js</span><span class="key-file-desc">File system API (/api/fs)</span></div>
+          <div class="key-file"><span class="key-file-path">packages/daemon/src/routes/shell.js</span><span class="key-file-desc">Terminal WebSocket PTY</span></div>
+          <div class="key-file"><span class="key-file-path">packages/tools/registry.js</span><span class="key-file-desc">Tool registration and dispatch</span></div>
+        </div>
+      </div>
+      <div>
+        <h3 class="text-h3" style="margin-bottom:16px;">UI (React)</h3>
+        <div class="key-files fade-up">
+          <div class="key-file"><span class="key-file-path">packages/ui/src/shell/Desktop.jsx</span><span class="key-file-desc">Wallpaper + icon grid</span></div>
+          <div class="key-file"><span class="key-file-path">packages/ui/src/shell/Taskbar.jsx</span><span class="key-file-desc">Bottom bar — dock, clock, orb</span></div>
+          <div class="key-file"><span class="key-file-path">packages/ui/src/shell/WindowManager.jsx</span><span class="key-file-desc">Floating window system</span></div>
+          <div class="key-file"><span class="key-file-path">packages/ui/src/shell/AIOrb.jsx</span><span class="key-file-desc">Animated AI assistant icon</span></div>
+          <div class="key-file"><span class="key-file-path">packages/ui/src/apps/registry.jsx</span><span class="key-file-desc">All built-in app registry</span></div>
+          <div class="key-file"><span class="key-file-path">packages/memory/main.py</span><span class="key-file-desc">FastAPI memory service entry</span></div>
+          <div class="key-file"><span class="key-file-path">docker/docker-compose.yml</span><span class="key-file-desc">Full stack definition</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section" style="background: var(--bg-alt);">
+  <div class="container">
+    <div class="cta-banner fade-up">
+      <h2>Ready to run Genesis OS?</h2>
+      <p>The entire stack starts with one command. No cloud setup, no API keys, no monthly cost.</p>
+      <div class="flex-center gap-12" style="flex-wrap:wrap;">
+        <a href="https://github.com/shahansha/genesis-os" class="btn btn-white btn-lg" target="_blank" rel="noopener">Clone on GitHub</a>
+        <a href="security.html" class="btn btn-outline-white btn-lg">Security Model →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="nav-logo" style="display:inline-flex;"><div class="nav-logo-icon">⚡</div><span>Genesis OS</span></a>
+        <p>AI-native operating system. Local-first. Privacy-preserving. Built by Shahansha Shaik.</p>
+        <div class="footer-social">
+          <a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener" aria-label="GitHub">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          </a>
+        </div>
+      </div>
+      <div class="footer-col"><h4>Product</h4><ul>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="use-cases.html">Use Cases</a></li>
+        <li><a href="roadmap.html">Roadmap</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Learn</h4><ul>
+        <li><a href="architecture.html#quickstart">Quick Start</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="architecture.html#env">Config Reference</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Community</h4><ul>
+        <li><a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/shahansha/genesis-os/issues" target="_blank" rel="noopener">Issues</a></li>
+        <li><a href="roadmap.html#contribute">Contribute</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 Genesis OS. MIT License.</p>
+      <div class="footer-bottom-links">
+        <a href="security.html#privacy">Privacy</a>
+        <a href="https://github.com/shahansha/genesis-os/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>

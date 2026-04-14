@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Genesis OS roadmap — from Docker MVP to voice, agentic tools, bootable OS, Raspberry Pi, and physical robotics." />
+  <title>Roadmap — Genesis OS</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%237c3aed'/><text y='24' x='4' font-size='22'>⚡</text></svg>" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    /* ── Timeline ── */
+    .timeline {
+      position: relative;
+      padding-left: 36px;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 8px; top: 8px; bottom: 8px;
+      width: 2px;
+      background: var(--border);
+    }
+    .timeline-item {
+      position: relative;
+      padding-bottom: 48px;
+    }
+    .timeline-item:last-child { padding-bottom: 0; }
+
+    .timeline-dot {
+      position: absolute;
+      left: -32px;
+      top: 4px;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      border: 3px solid var(--border);
+      background: var(--bg-alt);
+      z-index: 1;
+      transition: all var(--dur) var(--ease);
+    }
+    .timeline-item.active .timeline-dot {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-100), 0 0 16px var(--accent-glow);
+    }
+    .timeline-item.done .timeline-dot {
+      background: #10b981;
+      border-color: #10b981;
+    }
+
+    .timeline-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 24px 28px;
+      transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+    }
+    .timeline-item.active .timeline-content {
+      border-color: var(--border-accent);
+      box-shadow: 0 0 0 1px var(--border-accent), var(--shadow-md);
+    }
+    .timeline-item:hover .timeline-content {
+      box-shadow: var(--shadow-md);
+    }
+
+    .timeline-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .timeline-phase {
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em;
+      color: var(--text-3); text-transform: uppercase;
+    }
+    .timeline-title { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .timeline-desc  { font-size: 0.9rem; color: var(--text-3); line-height: 1.7; margin-bottom: 16px; }
+
+    .timeline-features {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+
+    .phase-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.72rem; font-weight: 600; padding: 3px 10px;
+      border-radius: 999px; letter-spacing: 0.04em;
+    }
+    .phase-badge.active   { background: rgba(124,58,237,0.12); color: var(--accent); }
+    .phase-badge.done     { background: rgba(16,185,129,0.12); color: #059669; }
+    .phase-badge.planned  { background: var(--bg-alt); border: 1px solid var(--border); color: var(--text-3); }
+    [data-theme="dark"] .phase-badge.active  { background: rgba(167,139,250,0.15); color: #a78bfa; }
+    [data-theme="dark"] .phase-badge.done    { background: rgba(16,185,129,0.15); color: #34d399; }
+
+    /* ── Contribute ── */
+    .contribute-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .contribute-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 24px;
+      transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
+    }
+    .contribute-card:hover { border-color: var(--border-accent); transform: translateY(-2px); }
+
+    /* Progress bar */
+    .phase-progress-bar {
+      background: var(--border);
+      border-radius: 999px;
+      height: 6px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .phase-progress-fill {
+      height: 100%; border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent), #a78bfa);
+      transition: width 1s ease;
+    }
+    .phase-progress-label {
+      font-size: 0.72rem; color: var(--text-3);
+      display: flex; justify-content: space-between;
+      margin-top: 4px;
+    }
+
+    /* Current status card */
+    .status-card {
+      background: linear-gradient(135deg, var(--accent-50) 0%, var(--bg-card) 100%);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--r-xl);
+      padding: 32px 36px;
+    }
+
+    @media (max-width: 768px) {
+      .timeline { padding-left: 28px; }
+      .timeline-dot { left: -24px; }
+      .contribute-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 1024px) {
+      .contribute-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo"><div class="nav-logo-icon">⚡</div><span>Genesis OS</span></a>
+    <div class="nav-links">
+      <a href="features.html"     class="nav-link" data-page="features.html">Features</a>
+      <a href="architecture.html" class="nav-link" data-page="architecture.html">Architecture</a>
+      <a href="use-cases.html"    class="nav-link" data-page="use-cases.html">Use Cases</a>
+      <a href="security.html"     class="nav-link" data-page="security.html">Security</a>
+      <a href="roadmap.html"      class="nav-link" data-page="roadmap.html">Roadmap</a>
+    </div>
+    <div class="nav-actions">
+      <button class="nav-theme-btn">🌙</button>
+      <a href="https://github.com/shahansha/genesis-os" class="nav-github" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        <span>GitHub</span>
+      </a>
+      <button class="nav-hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</nav>
+<div class="nav-mobile" id="mobile-nav">
+  <a href="features.html"     class="nav-link" data-page="features.html">Features</a>
+  <a href="architecture.html" class="nav-link" data-page="architecture.html">Architecture</a>
+  <a href="use-cases.html"    class="nav-link" data-page="use-cases.html">Use Cases</a>
+  <a href="security.html"     class="nav-link" data-page="security.html">Security</a>
+  <a href="roadmap.html"      class="nav-link" data-page="roadmap.html">Roadmap</a>
+</div>
+
+<main>
+
+<!-- PAGE HERO -->
+<section class="page-hero">
+  <div class="container">
+    <div class="page-hero-label">Roadmap</div>
+    <h1>Where Genesis OS<br><span class="gradient-text">is headed</span></h1>
+    <p>Six phases from a working Docker MVP to a full AI-native operating system that runs on your hardware, your terms, everywhere.</p>
+  </div>
+</section>
+
+<!-- ═══ CURRENT STATUS ═══ -->
+<section class="section">
+  <div class="container container-sm">
+    <div class="status-card fade-up">
+      <div class="flex-between" style="flex-wrap:wrap;gap:16px;align-items:flex-start;margin-bottom:20px;">
+        <div>
+          <div style="font-size:0.8rem;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Current Status</div>
+          <h2 class="text-h2" style="margin-bottom:4px;">Phase 0 — Docker MVP</h2>
+          <p style="font-size:0.9rem;color:var(--text-3);">The foundation is being laid. Shipping fast.</p>
+        </div>
+        <span class="phase-badge active">● In Progress</span>
+      </div>
+
+      <div class="phase-progress-bar">
+        <div class="phase-progress-fill" style="width: 70%"></div>
+      </div>
+      <div class="phase-progress-label"><span>Phase 0 — Docker MVP</span><span>~70%</span></div>
+
+      <div style="margin-top:24px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>OS desktop shell (glassmorphism)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>AI chat with streaming</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>File Manager app</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>Terminal (xterm.js + WebSocket PTY)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>PDF & Office Viewer</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>Monaco Text Editor</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>AI Browser with URL summary</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span style="color:var(--accent);font-weight:700;">↻</span> <span>Ollama auto-pull on first boot</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span style="color:var(--text-3);">○</span> <span style="color:var(--text-3);">Full docker compose up testing</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
+          <span style="color:var(--text-3);">○</span> <span style="color:var(--text-3);">Lock screen + auth</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FULL TIMELINE ═══ -->
+<section class="section" style="background: var(--bg-alt);">
+  <div class="container container-sm">
+    <div class="section-header fade-up">
+      <div class="section-label">Full Roadmap</div>
+      <h2 class="text-display">Six phases to<br>the complete OS</h2>
+    </div>
+
+    <div class="timeline fade-up">
+
+      <!-- Phase 0 -->
+      <div class="timeline-item active">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <div>
+              <div class="timeline-phase">Phase 0</div>
+              <div class="timeline-title">Docker MVP — Ship a Working OS</div>
+            </div>
+            <span class="phase-badge active">● Active</span>
+          </div>
+          <p class="timeline-desc">
+            A fully working AI operating system accessible via <code style="font-family:var(--font-mono);font-size:0.85em;">docker compose up</code>. World-class OS desktop UI, AI chat with streaming, 7 built-in apps, and a model that runs on CPU with no GPU required.
+          </p>
+          <div class="timeline-features">
+            <span class="tag">🖥️ OS Desktop Shell</span>
+            <span class="tag">💬 Streaming AI Chat</span>
+            <span class="tag">📁 File Manager</span>
+            <span class="tag">⬛ Terminal PTY</span>
+            <span class="tag">📄 PDF + Office Viewer</span>
+            <span class="tag">📝 Monaco Editor</span>
+            <span class="tag">🌐 AI Browser</span>
+            <span class="tag">🐳 Docker Compose</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 1 -->
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <div>
+              <div class="timeline-phase">Phase 1</div>
+              <div class="timeline-title">Enhanced Memory & Persistent Identity</div>
+            </div>
+            <span class="phase-badge planned">○ Planned</span>
+          </div>
+          <p class="timeline-desc">
+            Deep memory — not just conversation history. Genesis will watch your filesystem, automatically index documents, and build a rich long-term understanding of your projects, preferences, and identity. The ChromaDB sidecar serves as the backbone.
+          </p>
+          <div class="timeline-features">
+            <span class="tag">🧠 ChromaDB semantic memory</span>
+            <span class="tag">📂 chokidar file watcher</span>
+            <span class="tag">🗜️ Context compression</span>
+            <span class="tag">👤 Identity profile</span>
+            <span class="tag">🔍 Semantic file search</span>
+            <span class="tag">📚 Auto-indexing</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 2 -->
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <div>
+              <div class="timeline-phase">Phase 2</div>
+              <div class="timeline-title">Voice — Speak Naturally, Hear Genesis</div>
+            </div>
+            <span class="phase-badge planned">○ Planned</span>
+          </div>
+          <p class="timeline-desc">
+            The full voice stack: faster-whisper for transcription, Piper TTS for natural speech synthesis, and openWakeWord for "Hey Genesis" hotword detection. Speak your commands. Hear your answers. All processed locally.
+          </p>
+          <div class="timeline-features">
+            <span class="tag">🎤 faster-whisper STT</span>
+            <span class="tag">🔊 Piper TTS</span>
+            <span class="tag">👂 "Hey Genesis" wake word</span>
+            <span class="tag">🌊 Web Audio API</span>
+            <span class="tag">🔇 Local VAD</span>
+            <span class="tag">📸 Screenshot → multimodal</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 3 -->
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <div>
+              <div class="timeline-phase">Phase 3</div>
+              <div class="timeline-title">Agentic Tools — Act on the World</div>
+            </div>
+            <span class="phase-badge planned">○ Planned</span>
+          </div>
+          <p class="timeline-desc">
+            The full agent tool registry goes live. Genesis gains the ability to autonomously browse the web, write and edit files, execute terminal commands, send emails, and schedule tasks — all with the approval system keeping humans in control.
+          </p>
+          <div class="timeline-features">
+            <span class="tag">🔧 Tool registry + plugins</span>
+            <span class="tag">🌐 search_web (local SearxNG)</span>
+            <span class="tag">📧 send_email (local SMTP)</span>
+            <span class="tag">📅 node-cron scheduling</span>
+            <span class="tag">🔁 Agentic reasoning loop</span>
+            <span class="tag">🛡️ Approval system</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 4 -->
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <div>
+              <div class="timeline-phase">Phase 4</div>
+              <div class="timeline-title">Multi-Device Deployment</div>
+            </div>
+            <span class="phase-badge planned">○ Planned</span>
+          </div>
+          <p class="timeline-desc">
+            Genesis expands beyond Docker. A polished Electron desktop app, a Debian live-build bootable OS image you can write to a USB drive, a WebGPU browser demo using Transformers.js, and LAN sync between devices.
+          </p>
+          <div class="timeline-features">
+            <span class="tag">🖥️ Electron desktop app</span>
+            <span class="tag">💿 Bootable Debian OS image</span>
+            <span class="tag">🌐 WebGPU browser demo</span>
+            <span class="tag">📱 PWA (mobile)</span>
+            <span class="tag">🔄 LAN device sync</span>
+            <span class="tag">🔐 Caddy + Authelia</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 5 -->
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <div>
+              <div class="timeline-phase">Phase 5</div>
+              <div class="timeline-title">Robotics & Physical World</div>
+            </div>
+            <span class="phase-badge planned">○ Planned</span>
+          </div>
+          <p class="timeline-desc">
+            Genesis leaves the screen entirely. A Pi-optimised OS image, GPIO control tools, picamera2 integration with Gemma 4's multimodal vision, and ROS2/pigpio bridges for robotics. Your AI now has hands.
+          </p>
+          <div class="timeline-features">
+            <span class="tag">🍓 Raspberry Pi image</span>
+            <span class="tag">🔌 GPIO tools</span>
+            <span class="tag">📷 picamera2 vision</span>
+            <span class="tag">🤖 ROS2 bridge</span>
+            <span class="tag">💡 pigpio automation</span>
+            <span class="tag">🌡️ Sensor integration</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FUTURE VISION ═══ -->
+<section class="section">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Long-Term Vision</div>
+      <h2 class="text-display">What we're building<br>toward</h2>
+    </div>
+
+    <div class="grid-3 stagger">
+      <div class="card fade-up">
+        <div class="card-icon">🌐</div>
+        <h3 class="card-title">Universal Presence</h3>
+        <p class="card-desc">Genesis OS runs consistently across desktop, laptop, phone, Raspberry Pi, home server, and browser — with memory that syncs privately across all of them over your local network.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">🔌</div>
+        <h3 class="card-title">Open Plugin Ecosystem</h3>
+        <p class="card-desc">Any developer can publish Genesis plugins — new tools, new UI apps, new voice commands. The plugin API is intentionally identical to built-in tools, giving community plugins first-class status.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">🧩</div>
+        <h3 class="card-title">Model Marketplace</h3>
+        <p class="card-desc">One-click model switching — swap between Gemma, Qwen, Mistral, LLaMA, phi-4, and future models without touching config files. Specialised models for code, vision, and voice.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">🤝</div>
+        <h3 class="card-title">Multi-Agent Collaboration</h3>
+        <p class="card-desc">Multiple Genesis instances on a LAN can collaborate on tasks — one handles document management, another monitors servers, another handles communications. All memory private, all coordination local.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">👁️</div>
+        <h3 class="card-title">Ambient Awareness</h3>
+        <p class="card-desc">Genesis watches your filesystem, calendar, email (locally), and sensor data to proactively surface information — not just respond to prompts. A truly ambient presence.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">🌱</div>
+        <h3 class="card-title">Always Free & Open</h3>
+        <p class="card-desc">Genesis OS will never have a SaaS tier, premium features, or cloud lock-in. MIT license. Forever. The AI revolution should be universally accessible, not gated behind subscriptions.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CONTRIBUTE ═══ -->
+<section class="section" style="background: var(--bg-alt);" id="contribute">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Open Source</div>
+      <h2 class="text-display">Build Genesis OS<br>with us</h2>
+      <p class="text-lead" style="margin-top:16px;">Genesis OS is in active development. Every contribution moves us closer to the complete vision.</p>
+    </div>
+
+    <div class="contribute-grid stagger">
+      <div class="contribute-card fade-up">
+        <div style="font-size:2rem; margin-bottom:12px;">🐛</div>
+        <h3 class="card-title">Report Bugs</h3>
+        <p class="card-desc" style="margin-bottom:16px;">Found something broken? Open an issue on GitHub with reproduction steps and we'll fix it fast.</p>
+        <a href="https://github.com/shahansha/genesis-os/issues" class="btn btn-ghost" target="_blank" rel="noopener" style="font-size:0.875rem;">Open an Issue →</a>
+      </div>
+
+      <div class="contribute-card fade-up">
+        <div style="font-size:2rem; margin-bottom:12px;">✨</div>
+        <h3 class="card-title">Request Features</h3>
+        <p class="card-desc" style="margin-bottom:16px;">Have an idea that would make Genesis OS better? Start a discussion on GitHub and we'll consider it for the roadmap.</p>
+        <a href="https://github.com/shahansha/genesis-os/discussions" class="btn btn-ghost" target="_blank" rel="noopener" style="font-size:0.875rem;">Start a Discussion →</a>
+      </div>
+
+      <div class="contribute-card fade-up">
+        <div style="font-size:2rem; margin-bottom:12px;">🔧</div>
+        <h3 class="card-title">Submit PRs</h3>
+        <p class="card-desc" style="margin-bottom:16px;">New tools, UI improvements, bug fixes, documentation, new app integrations — all PRs welcome. Fork, branch, and send it.</p>
+        <a href="https://github.com/shahansha/genesis-os/fork" class="btn btn-ghost" target="_blank" rel="noopener" style="font-size:0.875rem;">Fork the Repo →</a>
+      </div>
+    </div>
+
+    <!-- Code snippet for plugin development -->
+    <div class="fade-up" style="margin-top:48px;">
+      <h3 class="text-h3" style="margin-bottom:16px; text-align:center;">Building a plugin takes minutes</h3>
+      <div class="code-block">
+        <div class="code-block-header">
+          <span>packages/tools/plugins/my-tool.js</span>
+          <button class="code-block-copy" aria-label="Copy code">Copy</button>
+        </div>
+        <pre><code><span style="color:#6272a4;">// Every Genesis OS plugin exports this exact shape</span>
+<span style="color:#ff79c6;">module.exports</span> = {
+  <span style="color:#8be9fd;">name</span>: <span style="color:#f1fa8c;">'weather'</span>,
+  <span style="color:#8be9fd;">description</span>: <span style="color:#f1fa8c;">'Get current weather for a location (local weather API)'</span>,
+  <span style="color:#8be9fd;">requiresApproval</span>: <span style="color:#bd93f9;">false</span>,
+  <span style="color:#8be9fd;">schema</span>: {
+    <span style="color:#8be9fd;">type</span>: <span style="color:#f1fa8c;">'object'</span>,
+    <span style="color:#8be9fd;">properties</span>: {
+      <span style="color:#8be9fd;">location</span>: { <span style="color:#8be9fd;">type</span>: <span style="color:#f1fa8c;">'string'</span>, <span style="color:#8be9fd;">description</span>: <span style="color:#f1fa8c;">'City name or postcode'</span> }
+    },
+    <span style="color:#8be9fd;">required</span>: [<span style="color:#f1fa8c;">'location'</span>]
+  },
+  <span style="color:#ff79c6;">async</span> execute({ location }, context) {
+    <span style="color:#6272a4;">// Your logic here — context has { projectRoot, userId, bus }</span>
+    <span style="color:#ff79c6;">const</span> data = <span style="color:#ff79c6;">await</span> fetch(<span style="color:#f1fa8c;">`http://localhost:7703/weather?q=<span style="color:#bd93f9;">${location}</span>`</span>);
+    <span style="color:#ff79c6;">return</span> <span style="color:#ff79c6;">await</span> data.json();
+  }
+};</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section">
+  <div class="container">
+    <div class="cta-banner fade-up">
+      <h2>Phase 0 is shipping now.</h2>
+      <p>Be part of the first AI OS that puts the user back in control.</p>
+      <div class="flex-center gap-12" style="flex-wrap:wrap;">
+        <a href="architecture.html#quickstart" class="btn btn-white btn-lg">Run It Now</a>
+        <a href="https://github.com/shahansha/genesis-os" class="btn btn-outline-white btn-lg" target="_blank" rel="noopener">⭐ Star on GitHub</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="nav-logo" style="display:inline-flex;"><div class="nav-logo-icon">⚡</div><span>Genesis OS</span></a>
+        <p>AI-native operating system. Local-first. Privacy-preserving. Built by Shahansha Shaik.</p>
+        <div class="footer-social">
+          <a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener" aria-label="GitHub">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          </a>
+        </div>
+      </div>
+      <div class="footer-col"><h4>Product</h4><ul>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="use-cases.html">Use Cases</a></li>
+        <li><a href="roadmap.html">Roadmap</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Learn</h4><ul>
+        <li><a href="architecture.html#quickstart">Quick Start</a></li>
+        <li><a href="security.html">Security</a></li>
+        <li><a href="roadmap.html">Roadmap</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Community</h4><ul>
+        <li><a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/shahansha/genesis-os/issues" target="_blank" rel="noopener">Issues</a></li>
+        <li><a href="roadmap.html#contribute">Contribute</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 Genesis OS. MIT License.</p>
+      <div class="footer-bottom-links">
+        <a href="security.html#privacy">Privacy</a>
+        <a href="https://github.com/shahansha/genesis-os/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>

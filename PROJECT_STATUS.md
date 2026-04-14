@@ -1,7 +1,7 @@
 # Genesis OS — Build Status Tracker
 
 > Cross-session tracker. Update this file at the end of every session.
-> Last updated: 2026-04-11 — **Phase 0 running. Phase 1 features added (voice, image gen, app builder).**
+> Last updated: 2026-04-14 — **OpenClaw-inspired: model failover chain, SOUL.md/AGENTS.md identity layer, chat slash commands, SKILL.md tool descriptors added.**
 
 ---
 
@@ -26,9 +26,9 @@
 ### Daemon (Node.js — `packages/daemon/`)
 - [x] `src/index.js` — Express server, bus wiring, graceful shutdown
 - [x] `src/bus.js` — EventEmitter internal bus
-- [x] `src/llm/client.js` — Ollama streaming client (model from env)
+- [x] `src/llm/client.js` — Ollama streaming client (model from env) + **model failover chain** (`GENESIS_MODEL_FALLBACK`)
 - [x] `src/db/index.js` — SQLite init + migrations (messages, settings, auth_sessions, created_apps, generated_images)
-- [x] `src/routes/chat.js` — `POST /api/ai/chat` streaming + agentic loop (6-step tool calling)
+- [x] `src/routes/chat.js` — `POST /api/ai/chat` streaming + agentic loop (6-step tool calling) + `GET /api/ai/status` + `POST /api/ai/compact`
 - [x] `src/routes/fs.js` — `GET/POST /api/fs/*` file system API
 - [x] `src/routes/shell.js` — `WS /api/shell` PTY terminal
 - [x] `src/routes/browse.js` — `POST /api/browse` URL fetch + AI summary
@@ -45,6 +45,12 @@
 - [x] `open_app` — open any built-in or user-created app in OS UI
 - [x] `generate_image` — generate image from prompt, save to workspace/generated/, return URL
 - [x] `create_app` — generate HTML/JS/IndexedDB mini-app, save to workspace/apps/, register in SQLite
+- [x] `create_document` — generate exact `.docx`, `.xlsx`, `.pptx`, or `.pdf` files
+- [x] `replace_file` — update an existing text file with approval on overwrite
+- [x] `copy_path` — copy files/folders across the workspace with approval on replace
+- [x] `move_path` — move/rename files and folders with approval on replace
+- [x] `delete_path` — delete files/folders with explicit approval
+- [x] `search_files` — search workspace files by name/path
 
 ### UI Shell (React — `packages/ui/src/shell/`)
 - [x] `Desktop.jsx` — wallpaper, icon grid, right-click context menu + **user-created app tiles** (dynamic, from `/api/apps/list`)
@@ -80,6 +86,10 @@
 - [x] **Quick action chips** — 6 shortcut buttons when chat is empty (create doc, open browser, generate image, create app, files, terminal)
 - [x] **Image rendering** — inline display of generated images with download link (`![...](/api/fs/raw/...)`)
 - [x] Stop voice / toggle while listening
+- [x] Continuous voice mode via local Whisper sidecar with silence detection and local Kokoro TTS
+- [x] Inline approval cards for destructive agent actions (delete / overwrite / destructive command)
+- [x] Local image preview + save actions for generated images stored in `Pictures/`
+- [x] **Slash commands** — `/new`, `/reset`, `/status`, `/compact`, `/think <level>`, `/model <name>`
 
 ---
 
@@ -88,11 +98,12 @@
 | Phase | Name | Status | Notes |
 |-------|------|--------|-------|
 | 0 | Docker MVP — OS Shell | 🟢 Done | docker compose up works, UI renders, AI chat functional |
-| 1 | Voice + Image Gen + App Builder | 🟡 In progress | Code complete — needs Docker rebuild to test |
-| 2 | Memory (ChromaDB vector search) | 🔴 Not started | chat history in SQLite ✓; vector embeddings pending |
-| 3 | Voice Sidecar (Whisper + Piper) | 🔴 Not started | Browser STT/TTS works; server-side Whisper pending |
-| 4 | Multi-device Deployment | 🔴 Not started | |
-| 5 | Robotics / Raspberry Pi | 🔴 Not started | |
+| 1 | Voice + Image Gen + App Builder | 🟢 Done | All tools working, voice echo fixed, image gen non-blocking |
+| 1.5 | Memory + Voice Sidecars | 🟢 Done | ChromaDB memory sidecar + Kokoro TTS + Whisper STT running in Docker |
+| 2 | Agentic improvements | 🟢 Done | skipFinalLlm short-circuit, native Ollama API, Gemma 4 tool parser, approval-gated destructive actions |
+| 2.5 | OpenClaw-inspired features | 🟢 Done | Model failover, SOUL.md/AGENTS.md, slash commands, SKILL.md registry |
+| 3 | Multi-device Deployment | 🔴 Not started | |
+| 4 | Robotics / Raspberry Pi | 🔴 Not started | |
 
 Status key: 🔴 Not started · 🟡 In progress · 🟢 Done · ⏸ Blocked
 
@@ -108,11 +119,14 @@ Status key: 🔴 Not started · 🟡 In progress · 🟢 Done · ⏸ Blocked
 - `src/db/index.js` — SQLite in WAL mode, auto-migrations: `messages`, `settings`, `auth_sessions`, `created_apps`, `generated_images`
 - `src/llm/client.js` — Ollama streaming client, `streamChat()` + `complete()` + `listModels()`
 - `src/routes/chat.js` — SSE streaming chat, 40-message SQLite history context, system prompt, full agentic loop (9 tools)
+- `src/routes/chat.js` — expanded agent loop with exact document generation, search/copy/move/delete tools, approval workflow, voice health/status, and approve/reject endpoints
 - `src/routes/fs.js` — Full CRUD file API with path-traversal protection (`safePath()`)
 - `src/routes/shell.js` — WebSocket PTY via `node-pty` (xterm-256color)
 - `src/routes/browse.js` — URL fetch + HTML strip + 12K LLM summary, http/https only
+- `src/office.js` — real `.docx`, `.xlsx`, `.pptx`, and `.pdf` generation buffers for agent-created documents
+- `src/workspace.js` — default folder bootstrapping plus document/image output routing and app inference
 
-### Phase 1 — Code complete (2026-04-11)
+### Phase 1 — Complete (2026-04-11)
 
 **New Daemon routes:**
 - `src/routes/image.js` — Image generation via Pollinations free API (default) or local SD API (`GENESIS_SD_API_URL`). Saves PNG to `workspace/generated/`. Logs to `generated_images` SQLite table.
@@ -122,6 +136,9 @@ Status key: 🔴 Not started · 🟡 In progress · 🟢 Done · ⏸ Blocked
 - `generate_image({ prompt })` — calls image generation inline, returns `/api/fs/raw/generated/{file}.png` URL, AI writes markdown image tag in response
 - `create_app({ name, description, icon, html_content })` — AI writes complete self-contained HTML/IndexedDB app, saved to workspace + SQLite, tile appears on Desktop immediately
 - Updated `wantsAction` regex to include `image|picture|photo|app|application`
+- Exact binary document generation enforced when the user asks for `.docx`, `.xlsx`, `.pptx`, or `.pdf`
+- Added explicit `create_document`, `replace_file`, `copy_path`, `move_path`, `delete_path`, and `search_files` tools
+- Added destructive-action approval path via `POST /api/ai/approve` and `POST /api/ai/reject`
 
 **New UI components:**
 - `apps/AppBuilder/index.jsx` — "My Apps" grid with delete confirm; `window._genesisRefreshApps()` hook for live refresh
@@ -138,6 +155,57 @@ Status key: 🔴 Not started · 🟡 In progress · 🟢 Done · ⏸ Blocked
   - **Image rendering** — inline `<img>` display with Download link for `/api/fs/raw/` URLs
   - **Voice improvements** — MediaRecorder fallback to Whisper sidecar; stop/toggle while listening; pulsing recording indicator; TTS strips image markdown
 
+### Phase 1.5 — Complete (2026-04-12)
+
+**Daemon — LLM client rewrite (`src/llm/client.js`):**
+- Switched from OpenAI-compat `/v1/chat/completions` to native Ollama `/api/chat` NDJSON streaming
+- Tool calls normalised: `arguments` object → JSON string for compatibility
+
+**Daemon — Chat route improvements (`src/routes/chat.js`):**
+- `parseTextToolCalls()` — parses Gemma 4's `<tool_code>func(args)</tool_code>` text format as fallback when structured tool_calls absent
+- Context trimmed to last 10 messages before LLM call (prevents context bloat)
+- `memoryStore()` + `memorySearch()` helpers — store/retrieve from ChromaDB sidecar (`MEMORY_SERVICE_URL`)
+- `skipFinalLlm` short-circuit — `write_file`, `create_folder`, `generate_image` return `{ skipFinalLlm: true, finalMessage }` so agent loop exits without an extra LLM call (eliminates 5–30s delay)
+- `generate_image` — returns Pollinations CDN URL immediately (FLUX-schnell model, ~5x faster than SDXL), background-saves to workspace. No more blocking wait.
+- System prompt updated: AI instructed to write `.md`/`.html` for documents, never `.docx`
+
+**Memory sidecar (`packages/memory/main.py`):**
+- FastAPI service on port 7701
+- ChromaDB + ONNX MiniLM embeddings (no PyTorch dependency)
+- `POST /store` — embed and store conversation turns
+- `POST /search` — semantic retrieval (top-N results)
+- `GET /health` — liveness check
+
+**Voice sidecar (`packages/voice/main.py`):**
+- FastAPI service on port 7702
+- `POST /transcribe` — audio (webm/wav/mp3) → text via faster-whisper (tiny model, CPU)
+- `POST /tts` — text → WAV via Kokoro TTS (82MB, Apache licensed, CPU-only, ~0.2s latency)
+- `GET /health` — liveness check
+- Startup no longer blocks on model download/load; service binds immediately and loads Whisper/Kokoro in background
+
+**Docker Compose updates:**
+- Added `genesis-memory` service (Python, port 7701, `CHROMA_PATH`, `MEMORY_SERVICE_URL`)
+- Added `genesis-voice` service (Python, port 7702, `WHISPER_MODEL=tiny`, `KOKORO_VOICE=bf_emma`)
+
+**UI — Voice mode rewrite (`ChatPanel.jsx`):**
+- **Echo fix** — `isSpeakingRef` flag: mic aborted (`recognition.abort()`) before TTS starts, restarted 500ms after TTS ends. `onresult` guarded by `isSpeakingRef` — drops all recognition events during playback.
+- **Kokoro TTS** — voice mode uses `/api/ai/tts` (Kokoro local sidecar) sentence-by-sentence. Falls back to Web Speech API if sidecar unavailable.
+- Standard TTS (non-continuous) uses Web Speech API capped at 300 chars
+- Continuous voice now uses local MediaRecorder + silence detection + Whisper sidecar instead of browser continuous recognition
+- Chat surfaces voice-sidecar readiness/errors and inline approvals for destructive agent actions
+
+**UI — Browser app (`AIBrowser/index.jsx`):**
+- Default quicklinks changed to DuckDuckGo, Wikipedia, Hacker News
+- Search terms (non-URLs with spaces) redirect to DuckDuckGo automatically
+- Blocked-site overlay — detects `refused to connect` / iframe block and shows friendly message with "Open in new tab" and "Search DuckDuckGo" buttons
+
+**UI — Office Viewer (`OfficeViewer/index.jsx`):**
+- Added `.md` and `.markdown` rendering (basic Markdown → HTML conversion)
+- Added `.html`/`.htm` rendering in sandboxed iframe
+- Added `.txt` plain-text rendering
+- DOCX parse failure fallback — if `docx-preview` throws (e.g. plain-text file with `.docx` extension), renders as plain text with warning
+- Accepts any unknown extension with plain-text fallback
+
 ---
 
 ## Environment Variable Reference (additions for Phase 1)
@@ -149,6 +217,9 @@ GENESIS_SD_API_URL=http://localhost:7860  # Only used if GENESIS_IMAGE_PROVIDER=
 
 # Voice sidecar (optional — browser STT works without this)
 VOICE_SERVICE_URL=http://localhost:7702  # Python Whisper sidecar URL
+
+# Model failover (Session 7)
+GENESIS_MODEL_FALLBACK=gemma4:e2b,llama3.2:3b  # Comma-separated fallback models tried in order on LLM error
 ```
 
 ---
@@ -160,18 +231,25 @@ VOICE_SERVICE_URL=http://localhost:7702  # Python Whisper sidecar URL
 - User-created apps: HTML/JS/IndexedDB apps sandboxed in iframes with `sandbox="allow-scripts allow-same-origin allow-forms allow-modals"`. Full offline-capable mini-app support.
 - Chat memory: All messages stored in SQLite. Last 40 turns sent to LLM. ChromaDB vector search planned for Phase 2.
 - Voice: Browser Web Speech API (Chrome/Edge) works without any sidecar. Whisper server-side available via `VOICE_SERVICE_URL` env + Python sidecar (Phase 3).
+- Voice: local-first path is now Whisper STT + Kokoro TTS sidecars, with browser speech kept only as a fallback for output.
+- Agent behavior: approval is required only for destructive actions (delete, overwrite, destructive shell commands); normal actions run agentically without confirmation.
 - UI framework: React 18 + Vite 5 + Framer Motion 11 + Tailwind CSS 3
 
 ---
 
 ## Blockers / To Fix
 
-- [ ] Rebuild Docker image to include new routes (`image.js`, `apps.js`)
-- [ ] Test `generate_image` tool end-to-end (requires network access to pollinations.ai from container)
-- [ ] Test `create_app` tool — AI should generate valid IndexedDB HTML
-- [ ] Test voice MediaRecorder path — requires mic permission in browser
-- [ ] Phase 2: Add ChromaDB Python sidecar for semantic memory search
-- [ ] Phase 3: Add Whisper Python sidecar for server-side STT
+- [x] Rebuild Docker image to include new routes (`image.js`, `apps.js`)
+- [x] Memory sidecar (ChromaDB) deployed and healthy
+- [x] Voice sidecar (Kokoro TTS + Whisper STT) deployed and starts serving before models finish loading
+- [x] Image gen non-blocking — returns CDN URL instantly
+- [x] Voice echo loop fixed — mic muted during TTS
+- [x] Agent second-LLM-call eliminated for file/image operations
+- [x] Exact `.docx` / `.xlsx` / `.pptx` / `.pdf` generation enforced in agent tool flow
+- [x] Agent destructive actions gated with inline approval instead of blanket confirmation
+- [ ] Test `create_app` tool end-to-end
+- [ ] Test full voice round-trip (continuous Whisper input + Kokoro output) in browser after daemon rebuild
+- [ ] DNS issue on some networks — Docker Desktop needs `"dns": ["8.8.8.8","8.8.4.4"]` in daemon.json (see Troubleshooting below)
 
 ---
 
@@ -203,17 +281,50 @@ VOICE_SERVICE_URL=http://localhost:7702  # Python Whisper sidecar URL
   - Desktop tiles updated to show user-created apps live
   - SQLite migrations for `created_apps` + `generated_images` tables
 
+### 2026-04-12 — Session 4: Memory + Voice sidecars, Ollama native API, Gemma 4 tool parsing
+- Switched LLM client to native Ollama `/api/chat` NDJSON streaming
+- Added `parseTextToolCalls()` to handle Gemma 4's `<tool_code>` text format
+- Wrote `packages/memory/main.py` — ChromaDB + ONNX MiniLM FastAPI sidecar (port 7701)
+- Wrote `packages/voice/main.py` — Kokoro TTS + faster-whisper FastAPI sidecar (port 7702)
+- Added both sidecars to `docker-compose.yml`
+- Added `skipFinalLlm` short-circuit to `write_file` and `create_folder` tools
+- Voice mode in ChatPanel: switched to Kokoro sentence-by-sentence TTS; Web Speech fallback
+- Deployed successfully; all 4 containers healthy
+
+### 2026-04-13 — Session 5: Bug fixes — voice echo, image blocking, Office Viewer, AI Browser
+- **Voice echo fixed:** replaced Web Audio VAD (unreliable, detected speaker as mic input) with `isSpeakingRef` mute pattern: `recognition.abort()` before TTS, restart 500ms after TTS ends. All `onresult`/`onend`/`onerror` handlers guard on `isSpeakingRef`.
+- **Image gen non-blocking:** added `skipFinalLlm: true` + `finalMessage: '![prompt](url)'` to `generate_image` return — agent exits immediately with inline markdown image, no 2nd LLM call.
+- **AI Browser:** DuckDuckGo default, auto-search for non-URLs, blocked-site overlay for `X-Frame-Options` sites.
+- **Office Viewer:** `.md`/`.html`/`.txt` rendering; DOCX fallback to plain text on parse error.
+- **Docker DNS fix:** added `"dns": ["8.8.8.8","8.8.4.4","1.1.1.1"]` to `%USERPROFILE%\.docker\daemon.json` to fix `registry-1.docker.io: no such host` on networks with broken DNS.
+- Rebuilt and redeployed daemon container; genesis-daemon healthy
+
+### 2026-04-13 — Session 6: Agentic expansion, exact Office/PDF files, local voice hardening
+- Added exact binary document generation for `.docx`, `.xlsx`, `.pptx`, and `.pdf` via `create_document`; agent now rewrites `.html`/`.md` fallbacks into the requested binary format automatically
+- Added broader agent tools in `chat.js`: `replace_file`, `copy_path`, `move_path`, `delete_path`, and `search_files`
+- Implemented approval-gated destructive actions with inline chat approvals and daemon approve/reject endpoints
+- Routed generated documents to `Documents/`, generated images to `Pictures/`, and added local open/save actions for generated images
+- Reworked continuous voice to use local MediaRecorder + silence detection + Whisper sidecar; added Kokoro voice selection and voice readiness status in Settings
+- Hardened `/api/ai/transcribe` and `/api/ai/tts` to return clean errors instead of `unhandledRejection` on sidecar failures
+- Fixed `genesis-voice` startup hang by moving Whisper/Kokoro loading to background initialization; rebuilt container and verified `genesis-voice` healthy
+
+### 2026-04-14 — Session 7: OpenClaw-inspired features (model failover, identity layer, slash commands, SKILL.md)
+- **Researched OpenClaw** (357k-star personal AI gateway) and identified 4 features worth adopting for Genesis OS
+- **Model failover chain** (`packages/daemon/src/llm/client.js`): all three LLM functions (`chat`, `streamChat`, `complete`) now try primary model then fall through a configurable `GENESIS_MODEL_FALLBACK` comma-separated list on any error; `getLastUsedModel()` exported; `GENESIS_MODEL_FALLBACK=gemma4:e2b,llama3.2:3b` added to `docker-compose.yml`
+- **SOUL.md + AGENTS.md** (`docker/workspace/`): personality and agent rules defined as editable workspace files; `routes/chat.js` loads both at startup and injects via `buildSystemPrompt()`; graceful fallback if files absent
+- **Chat slash commands** (`ChatPanel.jsx` + `routes/chat.js`): `/new`/`/reset` clears history; `/status` shows model, fallbacks, message count, identity file status; `/compact` summarises history with LLM then replaces with single summary message; `/think <level>` sets reasoning intensity; `/model <name>` switches active model — all intercepted client-side before the network fetch
+- **SKILL.md tool registry** (`packages/tools/`): created `SKILL.md` descriptor files for all 11 built-in tools (`bash`, `read_file`, `write_file`, `replace_file`, `list_files`, `delete_path`, `browse_page`, `create_document`, `generate_image`, `create_app`, `open_app`); created `packages/tools/registry.js` — loads + parses frontmatter at require time, exports `getAll()`, `get()`, `names()`, `reload()`, `summary()` for prompt injection
+
 ---
 
 ## Next Session — Pick Up Here
 
-1. `docker compose -f docker/docker-compose.yml up --build -d daemon` — rebuild daemon with Phase 1 routes
-2. Test image gen: ask "Generate an image of a futuristic city" 
-3. Test app creation: ask "Create a todo list app for me"
-4. Verify desktop tile appears after app creation
-5. Test maximize button in chat panel
-6. Quick action chips test
-7. Phase 2: Add ChromaDB Python sidecar for vector memory
+1. Rebuild daemon container to pick up all Session 7 changes: `docker compose up --build -d genesis-daemon`
+2. Verify slash commands in browser: `/status`, `/compact`, `/model gemma4:e2b`, `/reset`
+3. Test model failover by temporarily setting `GENESIS_MODEL=nonexistent-model` and confirming it falls through to `gemma4:e2b`
+4. Wire `packages/tools/registry.js` into `routes/chat.js` — inject `registry.summary()` into the system prompt so the LLM knows the full tool catalog at runtime
+5. Test exact binary document requests end-to-end with the new agent surface
+6. Consider adding `/help` slash command that lists all available commands with descriptions
 
 
 ---

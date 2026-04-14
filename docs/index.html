@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Genesis OS — The AI-native operating system that runs on your hardware, remembers everything, and puts you in complete control. Local-first, privacy-preserving, infinitely extensible." />
+  <meta property="og:title" content="Genesis OS — AI-Native Operating System" />
+  <meta property="og:description" content="A persistent local AI presence that runs on your hardware. Remembers everything. Works offline. Yours completely." />
+  <meta property="og:type" content="website" />
+  <title>Genesis OS — AI-Native Operating System</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%237c3aed'/><text y='24' x='4' font-size='22'>⚡</text></svg>" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     NAVIGATION
+════════════════════════════════════════════════════════════ -->
+<nav class="nav" role="navigation" aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo" aria-label="Genesis OS home">
+      <div class="nav-logo-icon" aria-hidden="true">⚡</div>
+      <span>Genesis OS</span>
+    </a>
+    <a href="https://genesisagi.in" class="nav-parent-badge" target="_blank" rel="noopener" aria-label="by Genesis AGI">by genesisagi.in</a>
+
+    <div class="nav-links" role="list">
+      <a href="features.html"     class="nav-link" data-page="features.html"     role="listitem">Features</a>
+      <a href="architecture.html" class="nav-link" data-page="architecture.html" role="listitem">Architecture</a>
+      <a href="use-cases.html"    class="nav-link" data-page="use-cases.html"    role="listitem">Use Cases</a>
+      <a href="security.html"     class="nav-link" data-page="security.html"     role="listitem">Security</a>
+      <a href="roadmap.html"      class="nav-link" data-page="roadmap.html"      role="listitem">Roadmap</a>
+    </div>
+
+    <div class="nav-actions">
+      <button class="nav-theme-btn" title="Toggle theme" aria-label="Toggle dark mode">🌙</button>
+      <a href="https://github.com/shahansha/genesis-os" class="nav-github" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        <span>GitHub</span>
+      </a>
+      <button class="nav-hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-nav">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- Mobile nav -->
+<div class="nav-mobile" id="mobile-nav" role="navigation" aria-label="Mobile navigation">
+  <a href="features.html"     class="nav-link" data-page="features.html">Features</a>
+  <a href="architecture.html" class="nav-link" data-page="architecture.html">Architecture</a>
+  <a href="use-cases.html"    class="nav-link" data-page="use-cases.html">Use Cases</a>
+  <a href="security.html"     class="nav-link" data-page="security.html">Security</a>
+  <a href="roadmap.html"      class="nav-link" data-page="roadmap.html">Roadmap</a>
+  <hr class="divider" style="margin: 8px 0;" />
+  <a href="https://github.com/shahansha/genesis-os" class="nav-link" target="_blank" rel="noopener">GitHub ↗</a>
+</div>
+
+<main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HERO
+════════════════════════════════════════════════════════════ -->
+<section class="hero" aria-labelledby="hero-headline">
+  <div class="hero-bg" aria-hidden="true">
+    <div class="hero-bg-gradient"></div>
+    <div class="hero-bg-grid"></div>
+  </div>
+
+  <div class="container">
+    <div class="hero-inner">
+      <!-- Left: copy -->
+      <div class="hero-content fade-up">
+        <div class="hero-announce">
+          <span>Early Access</span>
+          <span class="badge badge-accent">Phase 0 — Docker MVP</span>
+        </div>
+
+        <h1 class="hero-title" id="hero-headline">
+          The OS that<br>
+          <span class="gradient-text">thinks with you</span>
+        </h1>
+
+        <p class="hero-desc">
+          Genesis OS is an AI-native operating system that runs persistently on <em>your</em> hardware.
+          It remembers everything, works completely offline, and puts you in full control —
+          no subscriptions, no data leaving your machine.
+        </p>
+
+        <div class="hero-ctas">
+          <a href="architecture.html" class="btn btn-primary btn-lg">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Get Started
+          </a>
+          <a href="https://github.com/shahansha/genesis-os" class="btn btn-secondary btn-lg" target="_blank" rel="noopener">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            View on GitHub
+          </a>
+        </div>
+
+        <div class="hero-badges">
+          <span class="tag">🐳 Docker</span>
+          <span class="tag">🖥️ Electron</span>
+          <span class="tag">🍓 Raspberry Pi</span>
+          <span class="tag">💻 Bootable OS</span>
+          <span class="tag">🔒 Local-First</span>
+          <span class="tag">⚡ MIT License</span>
+        </div>
+      </div>
+
+      <!-- Right: OS Mockup -->
+      <div class="os-mockup-wrap fade-in" aria-hidden="true">
+        <div class="os-mockup" role="img" aria-label="Genesis OS desktop interface preview">
+          <div class="os-chrome">
+            <div class="os-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <div class="os-url-bar">genesis-os://desktop</div>
+          </div>
+
+          <div class="os-screen">
+            <!-- Desktop icons -->
+            <div class="os-desktop-icons">
+              <div class="os-icon"><div class="os-icon-img">📁</div><span>Files</span></div>
+              <div class="os-icon"><div class="os-icon-img">📝</div><span>Editor</span></div>
+              <div class="os-icon"><div class="os-icon-img">🌐</div><span>Browser</span></div>
+            </div>
+
+            <!-- Floating chat window -->
+            <div class="os-window">
+              <div class="os-window-titlebar">
+                <div class="os-window-dots">
+                  <span></span><span></span><span></span>
+                </div>
+                <span class="os-window-title">🤖 Genesis AI — Chat</span>
+              </div>
+              <div class="os-chat">
+                <div class="os-msg">
+                  <div class="os-msg-avatar">⚡</div>
+                  <div class="os-msg-bubble">Good morning! I noticed you were working on your invoice yesterday. Should I continue from where you left off?</div>
+                </div>
+                <div class="os-msg user">
+                  <div class="os-msg-avatar" style="background:rgba(255,255,255,0.1);">👤</div>
+                  <div class="os-msg-bubble user">Yes, summarise what needs to be done</div>
+                </div>
+                <div class="os-msg">
+                  <div class="os-msg-avatar">⚡</div>
+                  <div class="os-msg-bubble">You still need to add line items for the design work and send it to John by Friday. Want me to draft the email?</div>
+                </div>
+                <div class="os-typing">
+                  <span></span><span></span><span></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Taskbar -->
+            <div class="os-taskbar">
+              <div class="os-dock-item active">⚡</div>
+              <div class="os-dock-item">📁</div>
+              <div class="os-dock-item">📝</div>
+              <div class="os-dock-item">⬛</div>
+              <div class="os-dock-item">🌐</div>
+              <div class="os-dock-item">⚙️</div>
+              <div class="os-orb" title="AI Assistant">✦</div>
+              <span class="os-time">--:--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     WHAT IS GENESIS OS — 3 PILLARS
+════════════════════════════════════════════════════════════ -->
+<section class="section" style="background: var(--bg-alt);">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">What is Genesis OS</div>
+      <h2 class="text-display">Not a chatbot. Not a cloud service.<br>An <span class="gradient-text">operating system.</span></h2>
+      <p class="text-lead" style="margin-top:16px;">
+        Genesis OS runs continuously on your hardware as a persistent AI layer — watching, learning, and acting
+        alongside you without ever sending your data to the cloud.
+      </p>
+    </div>
+
+    <div class="grid-3 stagger" style="margin-top: 0;">
+      <div class="card fade-up" style="border-top: 3px solid var(--accent);">
+        <div class="card-icon">🧠</div>
+        <h3 class="card-title">Persistent Memory</h3>
+        <p class="card-desc">Every conversation, file interaction, and context is stored locally in ChromaDB and SQLite. Genesis remembers — forever — without forgetting.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon" style="background: #d1fae5;">🔒</div>
+        <h3 class="card-title">Truly Local-First</h3>
+        <p class="card-desc">Zero telemetry. Zero cloud APIs in the critical path. Your data never leaves your machine. 100% air-gapped operation is fully supported.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon" style="background: #dbeafe;">🚀</div>
+        <h3 class="card-title">Runs Any Model</h3>
+        <p class="card-desc">Powered by Ollama, Genesis works with Gemma 4, Qwen 3, Mistral, Phi-4, LLaMA — any open model. Swap models with a single config change.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FEATURE HIGHLIGHTS
+════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Capabilities</div>
+      <h2 class="text-display">Built for everything<br>you do every day</h2>
+    </div>
+
+    <div class="grid-3 stagger">
+      <div class="card fade-up">
+        <div class="card-icon">🪐</div>
+        <h3 class="card-title">AI Orb — Always Available</h3>
+        <p class="card-desc">An animated AI presence lives in the corner of your screen at all times. Click to chat, hold to talk, never interrupts unless you need it.</p>
+        <a href="features.html#aiOrb" class="btn btn-ghost btn-sm" style="margin-top:16px;">Learn more →</a>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">🗂️</div>
+        <h3 class="card-title">OS-Grade File Manager</h3>
+        <p class="card-desc">Browse, preview, and manage your filesystem with a spatial file manager. Ask the AI to find, summarise, or edit any file by voice or chat.</p>
+        <a href="features.html#fileManager" class="btn btn-ghost btn-sm" style="margin-top:16px;">Learn more →</a>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">🎤</div>
+        <h3 class="card-title">Always-On Voice</h3>
+        <p class="card-desc">"Hey Genesis" wake-word (openWakeWord), Whisper STT, and Piper TTS — all processed locally. No Alexa, no Siri, no surveillance.</p>
+        <a href="features.html#voice" class="btn btn-ghost btn-sm" style="margin-top:16px;">Learn more →</a>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">🔧</div>
+        <h3 class="card-title">Agentic Tool Use</h3>
+        <p class="card-desc">Run shell commands, read/write files, search the web, send emails — all through natural language. Every destructive action requires your approval.</p>
+        <a href="features.html#agentTools" class="btn btn-ghost btn-sm" style="margin-top:16px;">Learn more →</a>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">⬛</div>
+        <h3 class="card-title">Integrated Terminal</h3>
+        <p class="card-desc">A full PTY terminal powered by xterm.js. Ask the AI to explain error output, suggest commands, or run scripts directly in your workspace.</p>
+        <a href="features.html#terminal" class="btn btn-ghost btn-sm" style="margin-top:16px;">Learn more →</a>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">📄</div>
+        <h3 class="card-title">Office & PDF Viewer</h3>
+        <p class="card-desc">Open .docx, .xlsx, .pptx, and PDF files natively. Ask the AI to summarise documents, extract data, or answer questions about any file.</p>
+        <a href="features.html#viewers" class="btn btn-ghost btn-sm" style="margin-top:16px;">Learn more →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     STATS
+════════════════════════════════════════════════════════════ -->
+<section class="section-sm" style="background: var(--bg-alt);">
+  <div class="container">
+    <div class="stats-grid fade-up">
+      <div class="stat-item">
+        <div class="stat-number" data-count="128" data-suffix="K">0K</div>
+        <div class="stat-label">Context Window (tokens)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-count="0" data-suffix="$">$0</div>
+        <div class="stat-label">Cloud API cost — ever</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-count="5">0</div>
+        <div class="stat-label">Deployment targets</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number" data-count="100" data-suffix="%">0%</div>
+        <div class="stat-label">Data stays local</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HOW IT WORKS — QUICK VERSION
+════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="feature-split">
+      <div class="feature-content fade-up">
+        <div class="section-label">How It Works</div>
+        <h2 class="feature-title">One command.<br>Full AI-native desktop.</h2>
+        <p class="feature-desc">
+          Genesis runs as a Docker stack — no installation wizard, no cloud account, no API keys.
+          One command pulls the models, starts all services, and opens a world-class desktop UI in your browser.
+        </p>
+        <ul class="feature-list">
+          <li>Daemon (Node.js) orchestrates everything and exposes a real-time API</li>
+          <li>Ollama serves open models locally at the OpenAI-compatible endpoint</li>
+          <li>Python sidecars handle ChromaDB memory and Whisper/Piper voice</li>
+          <li>React UI renders a glassmorphic OS shell — no Electron required for Docker</li>
+        </ul>
+        <a href="architecture.html" class="btn btn-primary">Explore the Architecture →</a>
+      </div>
+
+      <div class="feature-visual fade-up">
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="code-block-title">Terminal — Start Genesis OS</span>
+            <button class="code-block-copy">Copy</button>
+          </div>
+          <pre><span class="cm"># Clone and start — that's it</span>
+<span class="fn">git</span> <span class="var">clone</span> https://github.com/shahansha/genesis-os
+<span class="fn">cd</span> <span class="var">genesis-os</span>
+
+<span class="cm"># One command boots everything</span>
+<span class="fn">docker</span> <span class="var">compose</span> up
+
+<span class="cm"># Opens at http://localhost:3000</span>
+<span class="cm"># Ollama auto-pulls gemma4:e4b (~9.6 GB)</span>
+<span class="cm"># No GPU required — fast CPU inference</span>
+
+<span class="cm"># Or choose a lighter model:</span>
+<span class="kw">GENESIS_MODEL</span>=<span class="str">gemma4:e2b</span> <span class="fn">docker</span> compose up</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     DEPLOY ANYWHERE
+════════════════════════════════════════════════════════════ -->
+<section class="section" style="background: var(--bg-alt);">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Deployment</div>
+      <h2 class="text-display">Your hardware.<br>Your rules.</h2>
+      <p class="text-lead" style="margin-top:16px;">
+        Genesis OS runs on whatever you have. From a MacBook to a Raspberry Pi to a bootable USB drive —
+        the same codebase, the same experience.
+      </p>
+    </div>
+
+    <div class="grid-3 stagger" style="margin-bottom: 24px;">
+      <div class="card fade-up" style="text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 12px;">🐳</div>
+        <h3 class="card-title">Docker Container</h3>
+        <p class="card-desc">The canonical deployment. <code style="font-family:var(--font-mono); font-size:0.8em; background:var(--bg-deeper); padding:2px 6px; border-radius:4px;">docker compose up</code> and you're running in seconds.</p>
+        <span class="badge badge-green" style="margin-top:12px;">✓ Phase 0 — Ready</span>
+      </div>
+      <div class="card fade-up">
+        <div style="font-size: 3rem; margin-bottom: 12px; text-align:center;">🖥️</div>
+        <h3 class="card-title" style="text-align:center;">Desktop App (Electron)</h3>
+        <p class="card-desc" style="text-align:center;">Native desktop experience on macOS, Windows, and Linux. Same UI, native file access, system tray orb.</p>
+        <div style="text-align:center;margin-top:12px;"><span class="badge badge-yellow">⚡ Phase 4</span></div>
+      </div>
+      <div class="card fade-up">
+        <div style="font-size: 3rem; margin-bottom: 12px; text-align:center;">💽</div>
+        <h3 class="card-title" style="text-align:center;">Bootable OS Image</h3>
+        <p class="card-desc" style="text-align:center;">Debian live-build image. Write to USB, boot any x86 machine, and you have a dedicated AI OS with no dependencies.</p>
+        <div style="text-align:center;margin-top:12px;"><span class="badge badge-yellow">⚡ Phase 4</span></div>
+      </div>
+    </div>
+
+    <div class="grid-2 stagger">
+      <div class="card fade-up">
+        <div style="font-size: 3rem; margin-bottom: 12px;">🍓</div>
+        <h3 class="card-title">Raspberry Pi</h3>
+        <p class="card-desc">Pi-optimised image with GPIO tools, picamera2 vision feed, and hardware control. Your home server becomes an AI physical agent.</p>
+        <span class="badge badge-blue" style="margin-top:12px;">Phase 5 — Robotics</span>
+      </div>
+      <div class="card fade-up">
+        <div style="font-size: 3rem; margin-bottom: 12px;">🌐</div>
+        <h3 class="card-title">Web Demo (WebGPU)</h3>
+        <p class="card-desc">Fully browser-based demo using Transformers.js with WebGPU acceleration. Try Genesis OS without installing anything.</p>
+        <span class="badge badge-blue" style="margin-top:12px;">Phase 4 — Web</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     TECH STACK
+════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Technology</div>
+      <h2 class="text-display">Proven stack.<br>Zero compromises.</h2>
+    </div>
+
+    <div class="grid-4 stagger">
+      <div class="card fade-up" style="text-align:center; padding: 24px 20px;">
+        <div style="font-size:2.4rem; margin-bottom:10px;">⚡</div>
+        <div class="card-title">Node.js</div>
+        <p class="card-desc" style="font-size:0.82rem;">Daemon core, API server, event bus, file watcher. Async everywhere.</p>
+      </div>
+      <div class="card fade-up" style="text-align:center; padding: 24px 20px;">
+        <div style="font-size:2.4rem; margin-bottom:10px;">🐍</div>
+        <div class="card-title">Python</div>
+        <p class="card-desc" style="font-size:0.82rem;">ChromaDB memory, Whisper STT, Piper TTS, openWakeWord sidecars.</p>
+      </div>
+      <div class="card fade-up" style="text-align:center; padding: 24px 20px;">
+        <div style="font-size:2.4rem; margin-bottom:10px;">🦙</div>
+        <div class="card-title">Ollama</div>
+        <p class="card-desc" style="font-size:0.82rem;">Local LLM serving. Any open model. OpenAI-compatible API. No GPU required.</p>
+      </div>
+      <div class="card fade-up" style="text-align:center; padding: 24px 20px;">
+        <div style="font-size:2.4rem; margin-bottom:10px;">⚛️</div>
+        <div class="card-title">React + Vite</div>
+        <p class="card-desc" style="font-size:0.82rem;">OS shell UI. Glassmorphism design. Framer Motion animations. No framework lock-in.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCREENSHOT PREVIEW
+════════════════════════════════════════════════════════════ -->
+<section class="section" style="background: var(--bg-alt);">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Interface</div>
+      <h2 class="text-display">Better than macOS.<br>Powered by AI.</h2>
+      <p class="text-lead" style="margin-top:16px;">Every pixel crafted to feel native, fast, and effortless — with an AI layer woven into every surface.</p>
+    </div>
+
+    <div class="screenshot-frame fade-up">
+      <div class="screenshot-chrome">
+        <div class="chrome-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="chrome-bar">localhost:3000 — Genesis OS Desktop</div>
+      </div>
+      <div class="img-placeholder" style="min-height: 500px;">
+        <!-- Replace src with actual screenshot -->
+        <!-- <img src="assets/images/desktop-screenshot.png" alt="Genesis OS Desktop UI" /> -->
+        <div class="img-placeholder-label">
+          <div class="icon">🖥️</div>
+          <p>Screenshot: Genesis OS Desktop — replace with <code>assets/images/desktop-screenshot.png</code></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-3 stagger" style="margin-top: 24px;">
+      <div class="screenshot-frame fade-up">
+        <div class="screenshot-chrome">
+          <div class="chrome-dots"><span></span><span></span><span></span></div>
+          <div class="chrome-bar">AI Chat</div>
+        </div>
+        <div class="img-placeholder" style="min-height: 220px;">
+          <!-- <img src="assets/images/chat-screenshot.png" alt="AI Chat Interface" /> -->
+          <div class="img-placeholder-label">
+            <div class="icon">💬</div>
+            <p>Screenshot: AI Chat — <code>assets/images/chat-screenshot.png</code></p>
+          </div>
+        </div>
+      </div>
+      <div class="screenshot-frame fade-up">
+        <div class="screenshot-chrome">
+          <div class="chrome-dots"><span></span><span></span><span></span></div>
+          <div class="chrome-bar">File Manager</div>
+        </div>
+        <div class="img-placeholder" style="min-height: 220px;">
+          <!-- <img src="assets/images/files-screenshot.png" alt="File Manager" /> -->
+          <div class="img-placeholder-label">
+            <div class="icon">📁</div>
+            <p>Screenshot: File Manager — <code>assets/images/files-screenshot.png</code></p>
+          </div>
+        </div>
+      </div>
+      <div class="screenshot-frame fade-up">
+        <div class="screenshot-chrome">
+          <div class="chrome-dots"><span></span><span></span><span></span></div>
+          <div class="chrome-bar">Terminal</div>
+        </div>
+        <div class="img-placeholder" style="min-height: 220px;">
+          <!-- <img src="assets/images/terminal-screenshot.png" alt="Terminal" /> -->
+          <div class="img-placeholder-label">
+            <div class="icon">⬛</div>
+            <p>Screenshot: Terminal — <code>assets/images/terminal-screenshot.png</code></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CREATOR
+════════════════════════════════════════════════════════════ -->
+<section class="section" id="creator">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Built By</div>
+      <h2 class="text-display">Meet the creator</h2>
+    </div>
+
+    <div class="creator-card fade-up">
+      <div class="creator-photo-wrap">
+        <img
+          src="https://shahansha.com/wp-content/uploads/2024/12/sha1.jpg"
+          alt="Shahansha Shaik"
+          class="creator-photo"
+          loading="lazy"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"
+        />
+        <div class="creator-photo-fallback" aria-hidden="true">SS</div>
+      </div>
+
+      <div class="creator-body">
+        <div class="creator-name-row">
+          <h3 class="creator-name">Shahansha Shaik</h3>
+          <span class="creator-badge">AI ENTHUSIAST</span>
+        </div>
+
+        <p class="creator-bio">
+          Passionate about building AI systems that belong to their users. Created Genesis OS to give everyone a persistent, private, local-first AI presence — one that runs on your own hardware, remembers your world, and acts as a true intelligent layer over your digital life. No cloud. No subscription. No limits.
+        </p>
+
+        <div class="creator-links">
+          <a href="https://genesisagi.in" class="creator-link creator-link-primary" target="_blank" rel="noopener">
+            <span class="creator-link-icon">🌐</span> Genesis AGI
+          </a>
+          <a href="https://shahansha.com" class="creator-link" target="_blank" rel="noopener">
+            <span class="creator-link-icon">🖥️</span> Website
+          </a>
+          <a href="https://linkedin.com/in/shahansha" class="creator-link" target="_blank" rel="noopener">
+            <span class="creator-link-icon">💼</span> LinkedIn
+          </a>
+          <a href="https://github.com/shaik-shahansha" class="creator-link" target="_blank" rel="noopener">
+            <span class="creator-link-icon">🐙</span> GitHub
+          </a>
+          <a href="https://www.youtube.com/watch?v=3VDbQoveeY0&list=PLS_kVNUvo93bYpR3eqYovAk53XkGgzu7j" class="creator-link" target="_blank" rel="noopener">
+            <span class="creator-link-icon">▶</span> YouTube
+          </a>
+        </div>
+
+        <div class="creator-projects">
+          <span class="creator-projects-label">Other projects</span>
+          <a href="https://shaik-shahansha.github.io/tesqo/" class="creator-project-tag" target="_blank" rel="noopener">🧪 Tesqo — Web Test Automation</a>
+          <a href="https://genesisagi.in" class="creator-project-tag creator-project-tag-accent" target="_blank" rel="noopener">⚡ Genesis AGI</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CTA
+════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <div class="container">
+    <div class="cta-banner fade-up">
+      <h2>Your AI. Your machine. Your rules.</h2>
+      <p>Launch the full Genesis OS stack in under a minute. No cloud account. No API keys. No monthly bill.</p>
+      <div class="flex-center gap-12" style="flex-wrap:wrap;">
+        <a href="architecture.html" class="btn btn-white btn-lg">Get Started Free</a>
+        <a href="features.html" class="btn btn-outline-white btn-lg">Explore Features</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FOOTER
+════════════════════════════════════════════════════════════ -->
+<footer class="footer" role="contentinfo">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="nav-logo" style="display:inline-flex; margin-bottom:0;">
+          <div class="nav-logo-icon">⚡</div>
+          <span>Genesis OS</span>
+        </a>
+        <p>An AI-native operating system that runs on your hardware, remembers everything, and works completely offline. Built by <a href="https://shahansha.com" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">Shahansha Shaik</a> · Part of <a href="https://genesisagi.in" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">Genesis AGI</a>.</p>
+        <div class="footer-social">
+          <a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener" aria-label="GitHub">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          </a>
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="features.html">Features</a></li>
+          <li><a href="architecture.html">Architecture</a></li>
+          <li><a href="use-cases.html">Use Cases</a></li>
+          <li><a href="roadmap.html">Roadmap</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Learn</h4>
+        <ul>
+          <li><a href="architecture.html#quickstart">Quick Start</a></li>
+          <li><a href="architecture.html#stack">Tech Stack</a></li>
+          <li><a href="security.html">Security Model</a></li>
+          <li><a href="security.html#privacy">Privacy Policy</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h4>Community</h4>
+        <ul>
+          <li><a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener">GitHub</a></li>
+          <li><a href="https://github.com/shahansha/genesis-os/issues" target="_blank" rel="noopener">Issues</a></li>
+          <li><a href="https://github.com/shahansha/genesis-os/discussions" target="_blank" rel="noopener">Discussions</a></li>
+          <li><a href="roadmap.html#contribute">Contribute</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>© 2025 Genesis OS · Built by <a href="https://shahansha.com" target="_blank" rel="noopener" style="color:inherit;">Shahansha Shaik</a> · <a href="https://genesisagi.in" target="_blank" rel="noopener" style="color:var(--accent);">Genesis AGI</a> · MIT License.</p>
+      <div class="footer-bottom-links">
+        <a href="security.html#privacy">Privacy</a>
+        <a href="https://github.com/shahansha/genesis-os/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+        <a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>

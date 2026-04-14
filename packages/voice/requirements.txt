@@ -5,3 +5,5 @@ kokoro>=0.9.4
 soundfile>=0.12.1
 numpy>=1.24.0
 python-multipart>=0.0.9
+truststore>=0.10.1
+huggingface_hub>=0.24.0

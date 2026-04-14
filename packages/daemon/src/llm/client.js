@@ -3,6 +3,14 @@
 const OLLAMA_BASE = process.env.OLLAMA_BASE_URL || 'http://ollama:11434';
 const DEFAULT_MODEL = process.env.GENESIS_MODEL || 'gemma4:e4b';
 
+let _addLog;
+function getLogger() {
+  if (!_addLog) {
+    try { _addLog = require('../logger').addLog; } catch { _addLog = () => {}; }
+  }
+  return _addLog;
+}
+
 /**
  * Non-streaming chat via native Ollama /api/chat endpoint.
  * Supports tool_calls (works with Gemma 4's native function-calling).
@@ -10,8 +18,13 @@ const DEFAULT_MODEL = process.env.GENESIS_MODEL || 'gemma4:e4b';
  * we normalize to JSON string so runAgent's JSON.parse() still works.
  */
 async function chat(messages, { model, tools, signal } = {}) {
+  const log = getLogger();
+  const usedModel = model || DEFAULT_MODEL;
+  const t0 = Date.now();
+  log('info', `[llm] chat → ${usedModel} | msgs: ${messages.length}`);
+
   const body = {
-    model: model || DEFAULT_MODEL,
+    model: usedModel,
     messages,
     stream: false,
   };
@@ -30,6 +43,7 @@ async function chat(messages, { model, tools, signal } = {}) {
   }
 
   const json = await res.json();
+  const elapsed = Date.now() - t0;
   const msg = json.message || { role: 'assistant', content: '' };
 
   // Native API: tool_calls[i].function.arguments is already a JS object.
@@ -47,6 +61,13 @@ async function chat(messages, { model, tools, signal } = {}) {
       },
     }));
   }
+
+  const toolNames = msg.tool_calls?.map((tc) => tc.function?.name).join(', ') || 'none';
+  const contentPreview = (msg.content || '').slice(0, 120).replace(/\n/g, ' ');
+  const evalDuration = json.eval_duration ? ` | eval: ${(json.eval_duration / 1e9).toFixed(1)}s` : '';
+  const promptTokens = json.prompt_eval_count ? ` | prompt_tokens: ${json.prompt_eval_count}` : '';
+  const evalTokens = json.eval_count ? ` | eval_tokens: ${json.eval_count}` : '';
+  log('info', `[llm] done in ${elapsed}ms${evalDuration}${promptTokens}${evalTokens} | tools: [${toolNames}] | content: "${contentPreview}"`);
 
   return msg;
 }
@@ -150,4 +171,31 @@ async function listModels() {
   }
 }
 
-module.exports = { streamChat, complete, listModels, chat };
+/**
+ * Pre-load the model into Ollama's memory so the first real request is fast.
+ * Uses /api/generate with an empty prompt — Ollama loads the model without
+ * generating any tokens, then unloads after keep_alive expires normally.
+ */
+async function warmup({ model } = {}) {
+  const log = getLogger();
+  const usedModel = model || DEFAULT_MODEL;
+  log('info', `[llm] warming up model: ${usedModel}`);
+  try {
+    const res = await fetch(`${OLLAMA_BASE}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: usedModel, prompt: '', keep_alive: '10m' }),
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (res.ok) {
+      await res.text().catch(() => {});
+      log('info', `[llm] model "${usedModel}" loaded and ready`);
+    } else {
+      log('warn', `[llm] warmup got ${res.status} — model may not be pulled yet`);
+    }
+  } catch (err) {
+    log('warn', `[llm] warmup failed (Ollama not ready?): ${err.message}`);
+  }
+}
+
+module.exports = { streamChat, complete, listModels, chat, warmup };

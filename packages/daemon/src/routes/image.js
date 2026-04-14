@@ -5,10 +5,9 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs').promises;
 const path = require('path');
 const db = require('../db');
+const { ensureWorkspaceStructure, ROOT, routeGeneratedPath, safeWorkspacePath } = require('../workspace');
 
 const router = express.Router();
-
-const ROOT = path.resolve(process.env.GENESIS_PROJECT_ROOT || path.join(__dirname, '../../../../workspace'));
 const PROVIDER = (process.env.GENESIS_IMAGE_PROVIDER || 'pollinations').toLowerCase();
 const SD_API_URL = process.env.GENESIS_SD_API_URL || 'http://localhost:7860';
 
@@ -49,12 +48,12 @@ router.post('/generate', async (req, res) => {
     return res.status(400).json({ error: 'prompt required' });
   }
 
-  const outDir = path.join(ROOT, 'generated');
-  await fs.mkdir(outDir, { recursive: true });
+  await ensureWorkspaceStructure();
 
-  const filename = `img_${uuidv4().slice(0, 8)}.png`;
-  const filePath = path.join(outDir, filename);
-  const relPath = `generated/${filename}`;
+  const relPath = routeGeneratedPath(`generated/img_${uuidv4().slice(0, 8)}.png`, 'image');
+  const outDir = path.dirname(safeWorkspacePath(relPath));
+  await fs.mkdir(outDir, { recursive: true });
+  const filePath = safeWorkspacePath(relPath);
 
   try {
     let imgBuf;

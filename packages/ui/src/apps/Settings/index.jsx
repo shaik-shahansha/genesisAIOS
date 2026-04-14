@@ -43,6 +43,55 @@ const ACCENTS = [
   { id: 'orange', label: 'Plasma Orange', value: '#EA580C' },
 ];
 
+const FEATURED_MODELS = [
+  {
+    tag: 'gemma4:e4b',
+    label: 'Gemma 4 E4B',
+    desc: 'Google · Default · 9.6 GB · Vision + Tools · 128K ctx · Best all-rounder',
+    badge: 'Recommended',
+  },
+  {
+    tag: 'gemma4:e2b',
+    label: 'Gemma 4 E2B',
+    desc: 'Google · 7.2 GB · Vision + Tools · 128K ctx · Fastest on weak CPUs',
+    badge: 'CPU-light',
+  },
+  {
+    tag: 'qwen3.5:9b',
+    label: 'Qwen 3.5 9B',
+    desc: 'Alibaba · 6.6 GB · Vision + Tools + Thinking · 256K ctx · Best agentic',
+    badge: 'Latest',
+  },
+  {
+    tag: 'qwen3.5:4b',
+    label: 'Qwen 3.5 4B',
+    desc: 'Alibaba · 3.4 GB · Vision + Tools + Thinking · 256K ctx · Tiny multimodal',
+    badge: 'Tiny',
+  },
+  {
+    tag: 'phi4-mini',
+    label: 'Phi-4 Mini',
+    desc: 'Microsoft · ~2.4 GB · Native function calling · Fast reasoning',
+    badge: 'Fast',
+  },
+];
+
+const TTS_VOICES = [
+  { id: 'bf_emma', label: 'Emma' },
+  { id: 'af_heart', label: 'Heart' },
+  { id: 'af_bella', label: 'Bella' },
+  { id: 'af_nicole', label: 'Nicole' },
+  { id: 'am_michael', label: 'Michael' },
+  { id: 'bm_george', label: 'George' },
+];
+
+function isInstalledModel(installedModels, requestedTag) {
+  if (requestedTag.includes(':')) {
+    return installedModels.includes(requestedTag);
+  }
+  return installedModels.includes(requestedTag) || installedModels.includes(`${requestedTag}:latest`);
+}
+
 export default function Settings() {
   const { authState, refreshAuth } = useOS();
   const [models, setModels] = useState([]);
@@ -50,7 +99,10 @@ export default function Settings() {
   const [accent, setAccent] = useState(localStorage.getItem('genesis_accent') || '#7C3AED');
   const [wallpaper, setWallpaper] = useState(localStorage.getItem('genesis_wallpaper') || 'ice');
   const [voiceEnabled, setVoiceEnabled] = useState(localStorage.getItem('genesis_voice') !== 'false');
+  const [ttsVoice, setTtsVoice] = useState(localStorage.getItem('genesis_tts_voice') || 'bf_emma');
+  const [voiceStatus, setVoiceStatus] = useState({ ok: false, whisper: false, tts: false, error: null });
   const [saved, setSaved] = useState(false);
+  const [pullProgress, setPullProgress] = useState({});
   const [generatingBg, setGeneratingBg] = useState(false);
   const [bgError, setBgError] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -59,11 +111,67 @@ export default function Settings() {
   const [securityMessage, setSecurityMessage] = useState('');
   const [securityError, setSecurityError] = useState('');
 
-  useEffect(() => {
+  const refreshModels = () => {
     fetch('/api/ai/models')
       .then((r) => r.json())
       .then((d) => setModels(d.models || []))
       .catch(() => {});
+  };
+
+  const pullModel = async (tag) => {
+    setPullProgress((p) => ({ ...p, [tag]: { status: 'starting', pct: 0 } }));
+    try {
+      const res = await fetch('/api/ai/models/pull', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: tag }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const payload = line.slice(6).trim();
+          if (!payload) continue;
+          try {
+            const evt = JSON.parse(payload);
+            if (evt.error) {
+              setPullProgress((p) => ({ ...p, [tag]: { status: 'error', error: evt.error } }));
+              return;
+            }
+            if (evt.status === 'success') {
+              setPullProgress((p) => ({ ...p, [tag]: { status: 'done', pct: 100 } }));
+              refreshModels();
+              return;
+            }
+            const pct =
+              evt.total > 0 ? Math.round((evt.completed / evt.total) * 100) : null;
+            setPullProgress((p) => ({
+              ...p,
+              [tag]: { status: evt.status || 'downloading', pct },
+            }));
+          } catch {}
+        }
+      }
+    } catch (err) {
+      setPullProgress((p) => ({ ...p, [tag]: { status: 'error', error: err.message } }));
+    }
+  };
+
+  useEffect(() => {
+    refreshModels();
+
+    fetch('/api/ai/voice-status')
+      .then((r) => r.json())
+      .then((d) => setVoiceStatus({ ok: !!d.ok, whisper: !!d.whisper, tts: !!d.tts, error: d.error || null }))
+      .catch((err) => setVoiceStatus({ ok: false, whisper: false, tts: false, error: err.message }));
   }, []);
 
   const save = () => {
@@ -71,6 +179,7 @@ export default function Settings() {
     localStorage.setItem('genesis_accent', accent);
     localStorage.setItem('genesis_wallpaper', wallpaper);
     localStorage.setItem('genesis_voice', String(voiceEnabled));
+    localStorage.setItem('genesis_tts_voice', ttsVoice);
 
     const selectedWallpaper = WALLPAPERS.find((w) => w.id === wallpaper);
     const wallpaperValue = selectedWallpaper?.value || WALLPAPERS[0].value;
@@ -239,6 +348,71 @@ export default function Settings() {
           )}
         </Section>
 
+        {/* Download Models */}
+        <Section title="Download Models">
+          <p className="text-white/45 text-xs mb-3">One-click download via Ollama. Large files — use on a good connection.</p>
+          <div className="flex flex-col gap-2.5">
+            {FEATURED_MODELS.map((fm) => {
+              const installed = isInstalledModel(models, fm.tag);
+              const progress = pullProgress[fm.tag];
+              const isDownloading = progress && progress.status !== 'done' && progress.status !== 'error';
+              const isDone = progress?.status === 'done' || installed;
+              return (
+                <div
+                  key={fm.tag}
+                  className="glass rounded-xl p-3 flex items-center gap-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-white/90 text-sm font-medium">{fm.label}</span>
+                      <span
+                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                        style={{ background: 'rgba(124,58,237,0.25)', color: '#a78bfa' }}
+                      >
+                        {fm.badge}
+                      </span>
+                      {isDone && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                          Installed
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-white/40 text-xs truncate">{fm.desc}</p>
+                    {isDownloading && (
+                      <div className="mt-1.5">
+                        <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: progress.pct != null ? `${progress.pct}%` : '100%',
+                              background: 'linear-gradient(90deg, #7C3AED, #4F46E5)',
+                              animation: progress.pct == null ? 'pulse 1.5s ease-in-out infinite' : 'none',
+                            }}
+                          />
+                        </div>
+                        <p className="text-white/40 text-xs mt-1">
+                          {progress.pct != null ? `${progress.pct}%` : progress.status}
+                        </p>
+                      </div>
+                    )}
+                    {progress?.status === 'error' && (
+                      <p className="text-red-400 text-xs mt-1">{progress.error}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => pullModel(fm.tag)}
+                    disabled={isDownloading || isDone}
+                    className="flex-shrink-0 px-3 py-1.5 rounded-lg text-white text-xs font-medium transition-all disabled:opacity-40"
+                    style={{ background: isDone ? 'rgba(34,197,94,0.15)' : 'linear-gradient(135deg, #7C3AED, #4F46E5)' }}
+                  >
+                    {isDone ? '✓ Ready' : isDownloading ? 'Pulling…' : 'Download'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+
         {/* Accent color */}
         <Section title="Accent Colour">
           <div className="flex flex-wrap gap-3">
@@ -317,11 +491,28 @@ export default function Settings() {
               <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${voiceEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
             </div>
             <span className="text-white/80 text-sm">
-              {voiceEnabled ? 'Voice enabled (browser mic + speech output)' : 'Voice disabled'}
+              {voiceEnabled ? 'Voice enabled (local Whisper + Kokoro when available)' : 'Voice disabled'}
             </span>
           </label>
+          <div className="mt-3">
+            <label className="block text-white/65 text-xs mb-2">Voice</label>
+            <select
+              value={ttsVoice}
+              onChange={(e) => setTtsVoice(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-accent"
+            >
+              {TTS_VOICES.map((voice) => (
+                <option key={voice.id} value={voice.id} className="bg-base-300">{voice.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="mt-3 text-white/45 text-xs space-y-1">
+            <p>Whisper STT: {voiceStatus.whisper ? 'ready' : 'offline'}</p>
+            <p>Kokoro TTS: {voiceStatus.tts ? 'ready' : 'offline'}</p>
+            {voiceStatus.error && <p className="text-orange-300">{voiceStatus.error}</p>}
+          </div>
           <p className="text-white/45 text-xs mt-3">
-            Current implementation uses browser speech recognition and speech synthesis locally. The Python voice sidecar can be added later for higher-quality STT/TTS and wake word support.
+            Continuous voice uses the local Python sidecar for Whisper transcription and Kokoro speech. Browser speech is only used as a fallback when local TTS is unavailable.
           </p>
         </Section>
 

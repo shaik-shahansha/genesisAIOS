@@ -5,9 +5,10 @@ FastAPI + ChromaDB vector memory using the built-in ONNX MiniLM embeddings
 """
 
 import os
+import json
 import logging
 from contextlib import asynccontextmanager
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -17,9 +18,27 @@ logger = logging.getLogger("genesis.memory")
 
 CHROMA_PATH = os.getenv("CHROMA_PATH", "./data/chroma")
 COLLECTION_NAME = "genesis_messages"
+PROFILE_PATH = os.path.join(CHROMA_PATH, "user_profile.json")
 
 chroma_client = None
 collection = None
+
+
+def _load_profile() -> dict:
+    """Load user profile from disk; returns empty dict if not found."""
+    try:
+        if os.path.exists(PROFILE_PATH):
+            with open(PROFILE_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {}
+
+
+def _save_profile(profile: dict):
+    os.makedirs(os.path.dirname(PROFILE_PATH), exist_ok=True)
+    with open(PROFILE_PATH, "w", encoding="utf-8") as f:
+        json.dump(profile, f, indent=2, ensure_ascii=False)
 
 
 @asynccontextmanager
@@ -41,6 +60,18 @@ async def lifespan(app: FastAPI):
         metadata={"hnsw:space": "cosine"},
     )
     logger.info(f"Memory service ready — {collection.count()} entries in store")
+
+    # Re-index the user profile into ChromaDB so it's always searchable
+    profile = _load_profile()
+    if profile:
+        profile_text = "\n".join(f"{k}: {v}" for k, v in profile.items())
+        collection.upsert(
+            ids=["__user_profile__"],
+            documents=[profile_text],
+            metadatas=[{"role": "user_profile", "pinned": "true"}],
+        )
+        logger.info("User profile re-indexed into ChromaDB")
+
     yield
     logger.info("Memory service shutting down")
 
@@ -58,7 +89,11 @@ class StoreRequest(BaseModel):
 
 class SearchRequest(BaseModel):
     query: str
-    n_results: int = 5
+    n_results: int = 8
+
+
+class ProfileUpdateRequest(BaseModel):
+    facts: Dict[str, Any]
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -81,9 +116,10 @@ async def store(req: StoreRequest):
 
 @app.post("/search")
 async def search(req: SearchRequest) -> dict:
-    if collection.count() == 0:
+    if not collection or collection.count() == 0:
         return {"results": []}
     try:
+        # Cap n_results at the number of documents available
         n = min(req.n_results, collection.count())
         results = collection.query(
             query_texts=[req.query],
@@ -92,17 +128,51 @@ async def search(req: SearchRequest) -> dict:
         )
         items: List[dict] = []
         for i, doc in enumerate(results["documents"][0]):
+            meta = results["metadatas"][0][i]
             items.append(
                 {
                     "content": doc,
-                    "role": results["metadatas"][0][i].get("role", ""),
+                    "role": meta.get("role", ""),
                     "distance": results["distances"][0][i],
+                    "pinned": meta.get("pinned") == "true",
                 }
             )
+        # Always put pinned items (user_profile) first
+        items.sort(key=lambda x: (0 if x["pinned"] else 1, x["distance"]))
         return {"results": items}
     except Exception as e:
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── User profile endpoints ────────────────────────────────────────────────────
+
+@app.get("/profile")
+async def get_profile():
+    """Return the persistent user identity profile."""
+    return {"profile": _load_profile()}
+
+
+@app.post("/profile")
+async def update_profile(req: ProfileUpdateRequest):
+    """Merge new facts into the user profile and re-index in ChromaDB."""
+    profile = _load_profile()
+    profile.update(req.facts)
+    _save_profile(profile)
+
+    # Keep ChromaDB in sync so profile is always searchable
+    profile_text = "\n".join(f"{k}: {v}" for k, v in profile.items())
+    try:
+        collection.upsert(
+            ids=["__user_profile__"],
+            documents=[profile_text],
+            metadatas=[{"role": "user_profile", "pinned": "true"}],
+        )
+    except Exception as e:
+        logger.warning(f"Profile ChromaDB upsert failed: {e}")
+
+    logger.info(f"User profile updated: {list(req.facts.keys())}")
+    return {"ok": True, "profile": profile}
 
 
 @app.delete("/clear")

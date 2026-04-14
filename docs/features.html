@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Explore Genesis OS features — AI Orb, voice control, file manager, terminal, office viewer, memory system, and agentic tool use." />
+  <title>Features — Genesis OS</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%237c3aed'/><text y='24' x='4' font-size='22'>⚡</text></svg>" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    /* Extra styles for features page */
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .app-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      overflow: hidden;
+      transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform var(--dur) var(--ease);
+    }
+    .app-card:hover {
+      border-color: var(--border-accent);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+    .app-card-header {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .app-card-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: var(--accent-100);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .app-card-name { font-weight: 600; font-size: 0.95rem; }
+    .app-card-tech { font-size: 0.75rem; color: var(--text-3); font-family: var(--font-mono); }
+    .app-card-body { padding: 16px 20px; }
+    .app-card-body p { font-size: 0.875rem; color: var(--text-3); line-height: 1.65; }
+    .app-card-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 6px; }
+
+    .orb-states {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+    .orb-state-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 20px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .orb-state-icon {
+      width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .orb-state-icon.idle { background: radial-gradient(circle, rgba(124,58,237,0.3), rgba(124,58,237,0.1)); animation: orb-idle 3s ease-in-out infinite; }
+    .orb-state-icon.listen { background: radial-gradient(circle, rgba(59,130,246,0.3), rgba(59,130,246,0.1)); animation: listen-pulse 1s ease-in-out infinite; }
+    .orb-state-icon.think { background: radial-gradient(circle, rgba(245,158,11,0.3), rgba(245,158,11,0.1)); animation: spin-slow 2s linear infinite; }
+    .orb-state-icon.speak { background: radial-gradient(circle, rgba(16,185,129,0.3), rgba(16,185,129,0.1)); animation: speak-wave 0.6s ease-in-out infinite alternate; }
+
+    @keyframes listen-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+    @keyframes spin-slow { to{transform:rotate(360deg)} }
+    @keyframes speak-wave { from{transform:scaleY(1)} to{transform:scaleY(1.15)} }
+
+    .memory-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .memory-step {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 14px 20px;
+    }
+    .memory-step-num {
+      width: 28px; height: 28px;
+      background: var(--accent-100);
+      color: var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+    .memory-step-text { font-size: 0.875rem; color: var(--text-2); }
+    .memory-step-text strong { color: var(--text); }
+
+    .tool-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tool-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      font-size: 0.875rem;
+    }
+    .tool-item-name { font-family: var(--font-mono); font-weight: 500; }
+    .tool-item-desc { color: var(--text-3); font-size: 0.82rem; flex: 1; margin: 0 12px; }
+
+    @media (max-width: 768px) {
+      .app-grid { grid-template-columns: 1fr; }
+      .orb-states { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" role="navigation">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo"><div class="nav-logo-icon">⚡</div><span>Genesis OS</span></a>
+    <div class="nav-links">
+      <a href="features.html"     class="nav-link" data-page="features.html">Features</a>
+      <a href="architecture.html" class="nav-link" data-page="architecture.html">Architecture</a>
+      <a href="use-cases.html"    class="nav-link" data-page="use-cases.html">Use Cases</a>
+      <a href="security.html"     class="nav-link" data-page="security.html">Security</a>
+      <a href="roadmap.html"      class="nav-link" data-page="roadmap.html">Roadmap</a>
+    </div>
+    <div class="nav-actions">
+      <button class="nav-theme-btn">🌙</button>
+      <a href="https://github.com/shahansha/genesis-os" class="nav-github" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        <span>GitHub</span>
+      </a>
+      <button class="nav-hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</nav>
+<div class="nav-mobile" id="mobile-nav">
+  <a href="features.html" class="nav-link" data-page="features.html">Features</a>
+  <a href="architecture.html" class="nav-link" data-page="architecture.html">Architecture</a>
+  <a href="use-cases.html" class="nav-link" data-page="use-cases.html">Use Cases</a>
+  <a href="security.html" class="nav-link" data-page="security.html">Security</a>
+  <a href="roadmap.html" class="nav-link" data-page="roadmap.html">Roadmap</a>
+</div>
+
+<main>
+
+<!-- PAGE HERO -->
+<section class="page-hero">
+  <div class="container">
+    <div class="page-hero-label">Features</div>
+    <h1>Everything you need.<br><span class="gradient-text">Nothing you don't.</span></h1>
+    <p>Genesis OS ships with a complete set of applications, an animated AI assistant, persistent memory, voice control, and agentic tooling — all running locally on your hardware.</p>
+    <div class="flex-center gap-12" style="flex-wrap:wrap;">
+      <a href="architecture.html" class="btn btn-primary">Get Started</a>
+      <a href="#aiOrb" class="btn btn-secondary">Explore Features ↓</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ AI ORB ═══ -->
+<section class="section" id="aiOrb">
+  <div class="container">
+    <div class="feature-split">
+      <div class="feature-content fade-up">
+        <div class="section-label">AI Orb</div>
+        <h2 class="feature-title">Your AI is always<br>one click away</h2>
+        <p class="feature-desc">
+          The AI Orb lives in the bottom-right corner of your screen at all times — always accessible, never obtrusive.
+          Four animation states communicate exactly what Genesis is doing without a single word.
+        </p>
+
+        <div class="orb-states" style="margin-bottom: 28px;">
+          <div class="orb-state-card fade-up">
+            <div class="orb-state-icon idle">✦</div>
+            <div>
+              <div style="font-weight:600; font-size:0.9rem; margin-bottom:4px;">Idle</div>
+              <p style="font-size:0.82rem; color:var(--text-3); margin:0;">Slow breathing pulse glow. Genesis is calm and ready.</p>
+            </div>
+          </div>
+          <div class="orb-state-card fade-up">
+            <div class="orb-state-icon listen">🎤</div>
+            <div>
+              <div style="font-weight:600; font-size:0.9rem; margin-bottom:4px;">Listening</div>
+              <p style="font-size:0.82rem; color:var(--text-3); margin:0;">Concentric ripple waves. Voice input active.</p>
+            </div>
+          </div>
+          <div class="orb-state-card fade-up">
+            <div class="orb-state-icon think">🧠</div>
+            <div>
+              <div style="font-weight:600; font-size:0.9rem; margin-bottom:4px;">Thinking</div>
+              <p style="font-size:0.82rem; color:var(--text-3); margin:0;">Neural-net particle orbit. Processing your request.</p>
+            </div>
+          </div>
+          <div class="orb-state-card fade-up">
+            <div class="orb-state-icon speak">🔊</div>
+            <div>
+              <div style="font-weight:600; font-size:0.9rem; margin-bottom:4px;">Speaking</div>
+              <p style="font-size:0.82rem; color:var(--text-3); margin:0;">Waveform visualiser. TTS response playing.</p>
+            </div>
+          </div>
+        </div>
+
+        <ul class="feature-list">
+          <li>Click to open the floating AI chat panel</li>
+          <li>Hold to activate push-to-talk voice input</li>
+          <li>Implemented with CSS animations + Framer Motion — no WebGL</li>
+          <li>Always rendered on top of every window</li>
+        </ul>
+      </div>
+
+      <div class="feature-visual fade-up">
+        <div class="screenshot-frame">
+          <div class="screenshot-chrome">
+            <div class="chrome-dots"><span></span><span></span><span></span></div>
+            <div class="chrome-bar">AI Orb — States</div>
+          </div>
+          <div class="img-placeholder" style="min-height: 360px;">
+            <!-- <img src="assets/images/ai-orb-screenshot.png" alt="AI Orb states" /> -->
+            <div class="img-placeholder-label">
+              <div class="icon">🪐</div>
+              <p>Screenshot: AI Orb animation states — <code>assets/images/ai-orb-screenshot.png</code></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ DESKTOP SHELL ═══ -->
+<section class="section" style="background: var(--bg-alt);">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Desktop Shell</div>
+      <h2 class="text-display">A complete OS experience<br>in your browser</h2>
+      <p class="text-lead" style="margin-top:16px;">
+        The Genesis OS shell renders entirely in React — no native dependencies, no Electron required for Docker deployments.
+        Every component is designed with glassmorphism depth and fluid 60fps motion.
+      </p>
+    </div>
+
+    <div class="grid-3 stagger">
+      <div class="card fade-up">
+        <div class="card-icon">🖥️</div>
+        <h3 class="card-title">Desktop</h3>
+        <p class="card-desc">Wallpaper, desktop icon grid, right-click context menu. Spatial file launching and drag-and-drop support.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">⬛</div>
+        <h3 class="card-title">Taskbar</h3>
+        <p class="card-desc">Dock at the bottom. Running app indicators, system clock, notification tray, and the AI Orb. Always at the bottom layer.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">🪟</div>
+        <h3 class="card-title">Window Manager</h3>
+        <p class="card-desc">Draggable, resizable floating windows. Glassmorphism borders. Snap to edges. Z-order management. Multiple windows side by side.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">🔍</div>
+        <h3 class="card-title">App Launcher</h3>
+        <p class="card-desc">Cmd+Space (or click the orb) for full-screen spotlight-style search. Instant fuzzy search across apps, files, and AI commands.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">🔔</div>
+        <h3 class="card-title">Notification Panel</h3>
+        <p class="card-desc">Slides in from the right. Receives AI messages, system events, scheduled proactive updates, and tool execution confirmations.</p>
+      </div>
+      <div class="card fade-up">
+        <div class="card-icon">🎨</div>
+        <h3 class="card-title">Design System</h3>
+        <p class="card-desc">Single configurable accent colour (default: electric violet). Glassmorphism panels. Dark-first theme. Fully themeable via CSS tokens.</p>
+      </div>
+    </div>
+
+    <div class="screenshot-frame fade-up" style="margin-top: 48px;">
+      <div class="screenshot-chrome">
+        <div class="chrome-dots"><span></span><span></span><span></span></div>
+        <div class="chrome-bar">Genesis OS — Window Manager</div>
+      </div>
+      <div class="img-placeholder" style="min-height: 460px;">
+        <!-- <img src="assets/images/window-manager-screenshot.png" alt="Window Manager" /> -->
+        <div class="img-placeholder-label">
+          <div class="icon">🪟</div>
+          <p>Screenshot: Window Manager with multiple apps — <code>assets/images/window-manager-screenshot.png</code></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ BUILT-IN APPS ═══ -->
+<section class="section" id="apps">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Built-in Applications</div>
+      <h2 class="text-display">Everything you need,<br>shipped on day one</h2>
+    </div>
+
+    <div class="app-grid stagger">
+      <div class="app-card fade-up" id="fileManager">
+        <div class="app-card-header">
+          <div class="app-card-icon">📁</div>
+          <div>
+            <div class="app-card-name">File Manager</div>
+            <div class="app-card-tech">React + /api/fs</div>
+          </div>
+        </div>
+        <div class="app-card-body">
+          <p>Tree sidebar navigation, icon grid view, drag-and-drop file operations, preview pane. Ask the AI to find, summarise, or act on any file in natural language.</p>
+        </div>
+        <div class="app-card-footer">
+          <span class="tag">📂 Browse</span>
+          <span class="tag">✂️ Cut/Copy/Paste</span>
+          <span class="tag">👁️ Preview</span>
+        </div>
+      </div>
+
+      <div class="app-card fade-up" id="terminal">
+        <div class="app-card-header">
+          <div class="app-card-icon" style="background:#1a1a2e;">⬛</div>
+          <div>
+            <div class="app-card-name">Terminal</div>
+            <div class="app-card-tech">xterm.js + WebSocket PTY</div>
+          </div>
+        </div>
+        <div class="app-card-body">
+          <p>Full PTY terminal over WebSocket. Ask the AI to explain error output, suggest commands, or execute entire shell scripts with your approval. Connects to daemon /api/shell.</p>
+        </div>
+        <div class="app-card-footer">
+          <span class="tag">🔧 Full PTY</span>
+          <span class="tag">🤖 AI assist</span>
+          <span class="tag">✅ Approval gate</span>
+        </div>
+      </div>
+
+      <div class="app-card fade-up" id="viewers">
+        <div class="app-card-header">
+          <div class="app-card-icon">📄</div>
+          <div>
+            <div class="app-card-name">PDF Viewer</div>
+            <div class="app-card-tech">@react-pdf-viewer + pdfjs-dist</div>
+          </div>
+        </div>
+        <div class="app-card-body">
+          <p>Native PDF rendering with page navigation, zoom, and text selection. Open any PDF from the file manager or by asking the AI to "open invoice.pdf".</p>
+        </div>
+        <div class="app-card-footer">
+          <span class="tag">📖 Render</span>
+          <span class="tag">🔍 Search</span>
+          <span class="tag">🤖 Summarise</span>
+        </div>
+      </div>
+
+      <div class="app-card fade-up">
+        <div class="app-card-header">
+          <div class="app-card-icon">📊</div>
+          <div>
+            <div class="app-card-name">Office Viewer</div>
+            <div class="app-card-tech">docx-preview + SheetJS</div>
+          </div>
+        </div>
+        <div class="app-card-body">
+          <p>Opens .docx, .xlsx, and .pptx files without Office installed. Read-only preview with faithful rendering. Ask the AI to extract data, compare revisions, or summarise content.</p>
+        </div>
+        <div class="app-card-footer">
+          <span class="tag">.docx</span>
+          <span class="tag">.xlsx</span>
+          <span class="tag">.pptx</span>
+        </div>
+      </div>
+
+      <div class="app-card fade-up">
+        <div class="app-card-header">
+          <div class="app-card-icon">📝</div>
+          <div>
+            <div class="app-card-name">Text Editor</div>
+            <div class="app-card-tech">Monaco Editor (VS Code engine)</div>
+          </div>
+        </div>
+        <div class="app-card-body">
+          <p>The same engine powering VS Code. Syntax highlighting for 60+ languages, IntelliSense, multi-cursor editing. AI can edit code inline on request.</p>
+        </div>
+        <div class="app-card-footer">
+          <span class="tag">60+ langs</span>
+          <span class="tag">AI inline edit</span>
+          <span class="tag">Multi-cursor</span>
+        </div>
+      </div>
+
+      <div class="app-card fade-up">
+        <div class="app-card-header">
+          <div class="app-card-icon">🌐</div>
+          <div>
+            <div class="app-card-name">AI Browser</div>
+            <div class="app-card-tech">React iframe + /api/browse</div>
+          </div>
+        </div>
+        <div class="app-card-body">
+          <p>Browse local and remote pages through a proxy with a URL bar. Click "Ask AI about this page" to get an instant summary, extract data, or ask questions about any web content.</p>
+        </div>
+        <div class="app-card-footer">
+          <span class="tag">🔗 Proxy</span>
+          <span class="tag">✨ AI Summary</span>
+          <span class="tag">❓ Ask about page</span>
+        </div>
+      </div>
+
+      <div class="app-card fade-up">
+        <div class="app-card-header">
+          <div class="app-card-icon">⚙️</div>
+          <div>
+            <div class="app-card-name">Settings</div>
+            <div class="app-card-tech">React form + /api/config</div>
+          </div>
+        </div>
+        <div class="app-card-body">
+          <p>Model picker (change Ollama model live), wallpaper selection, accent colour customiser, voice toggle, approval mode, and user profile configuration.</p>
+        </div>
+        <div class="app-card-footer">
+          <span class="tag">🦙 Model picker</span>
+          <span class="tag">🎨 Theming</span>
+          <span class="tag">🔧 Config</span>
+        </div>
+      </div>
+
+      <div class="app-card fade-up">
+        <div class="app-card-header">
+          <div class="app-card-icon">📋</div>
+          <div>
+            <div class="app-card-name">System Logs</div>
+            <div class="app-card-tech">Real-time SSE + /api/logs</div>
+          </div>
+        </div>
+        <div class="app-card-body">
+          <p>Live stream of daemon logs, LLM calls, tool executions, and memory retrievals. Colour-coded log levels. Filter by service. Essential for debugging and transparency.</p>
+        </div>
+        <div class="app-card-footer">
+          <span class="tag">📡 Live stream</span>
+          <span class="tag">🎨 Colour coded</span>
+          <span class="tag">🔍 Filter</span>
+        </div>
+      </div>
+
+      <div class="app-card fade-up">
+        <div class="app-card-header">
+          <div class="app-card-icon">🔨</div>
+          <div>
+            <div class="app-card-name">App Builder</div>
+            <div class="app-card-tech">AI-generated React components</div>
+          </div>
+        </div>
+        <div class="app-card-body">
+          <p>Describe an app in plain English. Genesis generates a fully functional React component, sandboxes it, and registers it in the app registry — without reloading.</p>
+        </div>
+        <div class="app-card-footer">
+          <span class="tag">✨ AI generate</span>
+          <span class="tag">🪄 Live sandbox</span>
+          <span class="tag">📦 Auto-register</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ MEMORY SYSTEM ═══ -->
+<section class="section" style="background: var(--bg-alt);" id="memory">
+  <div class="container">
+    <div class="feature-split">
+      <div class="feature-visual fade-up">
+        <div class="memory-flow">
+          <div class="memory-step">
+            <div class="memory-step-num">1</div>
+            <div class="memory-step-text"><strong>Message received</strong> — user says "open that contract I was editing yesterday"</div>
+          </div>
+          <div class="memory-step">
+            <div class="memory-step-num">2</div>
+            <div class="memory-step-text"><strong>ChromaDB retrieval</strong> — semantic search finds 5 relevant past interactions including file edit history</div>
+          </div>
+          <div class="memory-step">
+            <div class="memory-step-num">3</div>
+            <div class="memory-step-text"><strong>Context injection</strong> — memories prepended to LLM prompt. 128K context window, compression if full</div>
+          </div>
+          <div class="memory-step">
+            <div class="memory-step-num">4</div>
+            <div class="memory-step-text"><strong>Grounded response</strong> — AI opens the correct file and says "I found contract_v2.docx from Tuesday"</div>
+          </div>
+          <div class="memory-step">
+            <div class="memory-step-num">5</div>
+            <div class="memory-step-text"><strong>Stored to memory</strong> — this interaction appended to SQLite + ChromaDB for future retrieval</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-content fade-up">
+        <div class="section-label">Memory System</div>
+        <h2 class="feature-title">AI that<br>actually remembers</h2>
+        <p class="feature-desc">
+          Every single conversation, file access, and context is permanently stored in ChromaDB (vector) and SQLite (structured).
+          When you ask Genesis anything, it retrieves the most relevant memories before responding — so it always knows what you mean.
+        </p>
+        <ul class="feature-list">
+          <li>sentence-transformers embeddings for semantic memory search</li>
+          <li>chokidar file watcher auto-indexes your entire workspace continuously</li>
+          <li>Context compression (packages/memory/compress.py) when 128K window fills</li>
+          <li>Append-only — memories are never silently deleted without your consent</li>
+          <li>Identity profile: your name, preferences, projects, and habits</li>
+        </ul>
+        <a href="architecture.html#memory" class="btn btn-primary">Memory Architecture →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ VOICE ═══ -->
+<section class="section" id="voice">
+  <div class="container">
+    <div class="feature-split reverse">
+      <div class="feature-content fade-up">
+        <div class="section-label">Voice Control</div>
+        <h2 class="feature-title">Talk to your OS.<br>Privately.</h2>
+        <p class="feature-desc">
+          Full hands-free operation with a wake-word, local speech-to-text, and natural-sounding text-to-speech.
+          Everything runs on-device — no audio ever leaves your machine.
+        </p>
+        <ul class="feature-list">
+          <li><strong>"Hey Genesis"</strong> — openWakeWord always-listening detection</li>
+          <li><strong>faster-whisper STT</strong> — tiny/base/small/medium model choices</li>
+          <li><strong>Piper TTS</strong> — natural voices, no cloud, zero latency</li>
+          <li>Web Audio API spectrum visualisation in the browser</li>
+          <li>Screenshot → multimodal vision (Gemma 4 supports images natively)</li>
+          <li>Disable voice entirely with one env flag</li>
+        </ul>
+        <a href="architecture.html#voice" class="btn btn-primary">Voice Architecture →</a>
+      </div>
+
+      <div class="feature-visual fade-up">
+        <div class="screenshot-frame">
+          <div class="screenshot-chrome">
+            <div class="chrome-dots"><span></span><span></span><span></span></div>
+            <div class="chrome-bar">Voice Control Interface</div>
+          </div>
+          <div class="img-placeholder" style="min-height: 320px;">
+            <!-- <img src="assets/images/voice-screenshot.png" alt="Voice Control" /> -->
+            <div class="img-placeholder-label">
+              <div class="icon">🎤</div>
+              <p>Screenshot: Voice interface — <code>assets/images/voice-screenshot.png</code></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ AGENT TOOLS ═══ -->
+<section class="section" style="background: var(--bg-alt);" id="agentTools">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Agentic Tool Use</div>
+      <h2 class="text-display">More than a chatbot —<br>an agent that <span class="gradient-text">acts</span></h2>
+      <p class="text-lead" style="margin-top:16px;">
+        Genesis uses Gemma 4's native function calling to execute real actions on your behalf.
+        Every destructive operation waits for your explicit approval before proceeding.
+      </p>
+    </div>
+
+    <div class="grid-2 stagger" style="margin-bottom:40px;">
+      <div class="fade-up">
+        <h3 class="text-h3" style="margin-bottom:16px;">Built-in Tools</h3>
+        <div class="tool-list">
+          <div class="tool-item">
+            <span class="tool-item-name">read_file</span>
+            <span class="tool-item-desc">Read any file in the workspace</span>
+            <span class="badge badge-green">Safe</span>
+          </div>
+          <div class="tool-item">
+            <span class="tool-item-name">write_file</span>
+            <span class="tool-item-desc">Write or patch a file</span>
+            <span class="badge badge-yellow">Approval</span>
+          </div>
+          <div class="tool-item">
+            <span class="tool-item-name">run_shell</span>
+            <span class="tool-item-desc">Execute a shell command</span>
+            <span class="badge badge-yellow">Approval</span>
+          </div>
+          <div class="tool-item">
+            <span class="tool-item-name">search_web</span>
+            <span class="tool-item-desc">Search via local SearxNG instance</span>
+            <span class="badge badge-green">Safe</span>
+          </div>
+          <div class="tool-item">
+            <span class="tool-item-name">send_email</span>
+            <span class="tool-item-desc">Send email via configured SMTP</span>
+            <span class="badge badge-yellow">Approval</span>
+          </div>
+          <div class="tool-item">
+            <span class="tool-item-name">browse_url</span>
+            <span class="tool-item-desc">Fetch and summarise a URL</span>
+            <span class="badge badge-green">Safe</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="fade-up">
+        <h3 class="text-h3" style="margin-bottom:16px;">Plugin System</h3>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title" style="margin-bottom:8px;">Any tool. Same interface.</div>
+          <p class="card-desc" style="margin-bottom:16px;">Every tool — built-in or custom — implements the same interface. Drop a file in <code style="font-family:var(--font-mono);font-size:0.8em;background:var(--bg-deeper);padding:2px 6px;border-radius:4px;">packages/tools/plugins/</code> and it's instantly available to the AI.</p>
+          <div class="code-block">
+            <div class="code-block-header">
+              <span class="code-block-title">my-tool.js</span>
+              <button class="code-block-copy">Copy</button>
+            </div>
+            <pre><span class="kw">module.exports</span> = {
+  name: <span class="str">'my_tool'</span>,
+  description: <span class="str">'Does something useful'</span>,
+  requiresApproval: <span class="kw">false</span>,
+  schema: {
+    type: <span class="str">'object'</span>,
+    properties: {
+      input: { type: <span class="str">'string'</span> }
+    }
+  },
+  <span class="kw">async</span> <span class="fn">execute</span>({ input }, context) {
+    <span class="cm">// context = { bus, projectRoot }</span>
+    <span class="kw">return</span> <span class="str">`Result: ${input}`</span>;
+  }
+};</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="screenshot-frame fade-up">
+      <div class="screenshot-chrome">
+        <div class="chrome-dots"><span></span><span></span><span></span></div>
+        <div class="chrome-bar">Agentic Loop — Tool Execution</div>
+      </div>
+      <div class="img-placeholder" style="min-height: 300px;">
+        <!-- <img src="assets/images/agent-screenshot.png" alt="Agentic tool use" /> -->
+        <div class="img-placeholder-label">
+          <div class="icon">🔧</div>
+          <p>Screenshot: Agent loop with approval UI — <code>assets/images/agent-screenshot.png</code></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ MODEL AGNOSTIC ═══ -->
+<section class="section">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Model Agnostic</div>
+      <h2 class="text-display">Switch models.<br>Zero code changes.</h2>
+      <p class="text-lead" style="margin-top:16px;">
+        Genesis never hardcodes a model name. One environment variable swap and you're running a completely different LLM —
+        all tool schemas, memory retrieval, and function calling adapt automatically.
+      </p>
+    </div>
+
+    <div class="grid-4 stagger">
+      <div class="card fade-up" style="text-align:center;">
+        <div style="font-size:2rem; margin-bottom:8px;">🔷</div>
+        <div class="card-title">gemma4:e4b</div>
+        <p class="card-desc" style="font-size:0.82rem;">Default. 4B effective params (MoE). 9.6 GB. 128K context. Multimodal. Fast CPU.</p>
+        <span class="badge badge-green" style="margin-top:10px;">Default</span>
+      </div>
+      <div class="card fade-up" style="text-align:center;">
+        <div style="font-size:2rem; margin-bottom:8px;">⚡</div>
+        <div class="card-title">gemma4:e2b</div>
+        <p class="card-desc" style="font-size:0.82rem;">2B effective params. 7.2 GB. Fastest CPU option. Low RAM machines.</p>
+        <span class="badge badge-blue" style="margin-top:10px;">Lightweight</span>
+      </div>
+      <div class="card fade-up" style="text-align:center;">
+        <div style="font-size:2rem; margin-bottom:8px;">🏔️</div>
+        <div class="card-title">qwen3:8b</div>
+        <p class="card-desc" style="font-size:0.82rem;">Excellent reasoning. Great for code. Strong multilingual support.</p>
+        <span class="badge badge-blue" style="margin-top:10px;">Code-focused</span>
+      </div>
+      <div class="card fade-up" style="text-align:center;">
+        <div style="font-size:2rem; margin-bottom:8px;">🦙</div>
+        <div class="card-title">Any Ollama model</div>
+        <p class="card-desc" style="font-size:0.82rem;">Mistral, Phi-4, LLaMA, Deepseek — any model in the Ollama library works instantly.</p>
+        <span class="badge badge-accent" style="margin-top:10px;">Your choice</span>
+      </div>
+    </div>
+
+    <div class="code-block fade-up" style="margin-top:40px; max-width: 600px; margin-left:auto; margin-right:auto;">
+      <div class="code-block-header">
+        <span class="code-block-title">docker-compose.yml — switch models</span>
+        <button class="code-block-copy">Copy</button>
+      </div>
+      <pre><span class="cm"># Change ONE variable to switch models</span>
+environment:
+  <span class="kw">GENESIS_MODEL</span>: <span class="str">gemma4:e2b</span>   <span class="cm"># ← change this</span>
+  <span class="kw">OLLAMA_BASE_URL</span>: http://ollama:11434
+  <span class="kw">GENESIS_PORT</span>: <span class="num">3000</span>
+  <span class="kw">GENESIS_VOICE_ENABLED</span>: <span class="str">true</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section" style="background: var(--bg-alt);">
+  <div class="container">
+    <div class="cta-banner fade-up">
+      <h2>Ready to try every feature?</h2>
+      <p>Launch Genesis OS with Docker and explore all features in under 5 minutes.</p>
+      <div class="flex-center gap-12" style="flex-wrap:wrap;">
+        <a href="architecture.html" class="btn btn-white btn-lg">Launch with Docker</a>
+        <a href="use-cases.html" class="btn btn-outline-white btn-lg">See Use Cases</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="nav-logo" style="display:inline-flex;"><div class="nav-logo-icon">⚡</div><span>Genesis OS</span></a>
+        <p>AI-native operating system. Local-first. Privacy-preserving. Built by Shahansha Shaik.</p>
+        <div class="footer-social">
+          <a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener" aria-label="GitHub">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          </a>
+        </div>
+      </div>
+      <div class="footer-col"><h4>Product</h4><ul>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="use-cases.html">Use Cases</a></li>
+        <li><a href="roadmap.html">Roadmap</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Learn</h4><ul>
+        <li><a href="architecture.html#quickstart">Quick Start</a></li>
+        <li><a href="security.html">Security Model</a></li>
+        <li><a href="security.html#privacy">Privacy</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Community</h4><ul>
+        <li><a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/shahansha/genesis-os/issues" target="_blank" rel="noopener">Issues</a></li>
+        <li><a href="roadmap.html#contribute">Contribute</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 Genesis OS. MIT License.</p>
+      <div class="footer-bottom-links">
+        <a href="security.html#privacy">Privacy</a>
+        <a href="https://github.com/shahansha/genesis-os/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>

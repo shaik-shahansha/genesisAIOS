@@ -52,6 +52,8 @@ if "%RUNNING%"=="1" (
 )
 
 echo Starting Genesis OS...
+REM Build only if images are missing; skip rebuild if already built to keep startup fast.
+REM To apply source code changes, run: docker compose -f docker/docker-compose.yml build
 "%DOCKER_EXE%" compose -f "%COMPOSE_FILE%" up --build -d
 if errorlevel 1 (
     echo Failed to start Genesis OS.

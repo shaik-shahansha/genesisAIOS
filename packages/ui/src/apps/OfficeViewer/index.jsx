@@ -1,12 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import JSZip from 'jszip';
+import Editor from '@monaco-editor/react';
 import FilePicker from '../../components/FilePicker';
+
+const EDITABLE_EXTS = new Set(['docx', 'pptx', 'xlsx', 'pdf']);
 
 export default function OfficeViewer({ filePath: initialPath }) {
   const [currentPath, setCurrentPath] = useState(initialPath || '');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [sourceText, setSourceText] = useState('');
+  const [saving, setSaving] = useState(false);
   const containerRef = useRef(null);
 
   const openFile = async (p) => {
@@ -15,6 +22,8 @@ export default function OfficeViewer({ filePath: initialPath }) {
     setError(null);
     setLoading(true);
     setCurrentPath(p);
+    setEditMode(false);
+    setSourceText('');
 
     try {
       const res = await fetch(`/api/fs/raw?path=${encodeURIComponent(p)}`);
@@ -22,14 +31,12 @@ export default function OfficeViewer({ filePath: initialPath }) {
       const blob = await res.blob();
 
       if (ext === 'md' || ext === 'markdown') {
-        // Render Markdown as styled HTML
         const text = await blob.text();
         const html = text
           .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
           .replace(/^# (.+)$/gm, '<h1>$1</h1>')
           .replace(/^## (.+)$/gm, '<h2>$1</h2>')
           .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-          .replace(/^\*\*(.+)\*\*$/gm, '<strong>$1</strong>')
           .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
           .replace(/\*(.+?)\*/g, '<em>$1</em>')
           .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -39,7 +46,6 @@ export default function OfficeViewer({ filePath: initialPath }) {
         containerRef.current.innerHTML = `<div class="md-body"><p>${html}</p></div>`;
 
       } else if (ext === 'html' || ext === 'htm') {
-        // Render HTML in a sandboxed iframe-like div
         const text = await blob.text();
         containerRef.current.innerHTML = '';
         const iframe = document.createElement('iframe');
@@ -59,20 +65,16 @@ export default function OfficeViewer({ filePath: initialPath }) {
           const { renderAsync } = await import('docx-preview');
           containerRef.current.innerHTML = '';
           await renderAsync(blob, containerRef.current, null, {
-            className: 'genesis-docx',
-            inWrapper: true,
-            ignoreWidth: false,
-            ignoreHeight: false,
-            renderHeaders: true,
-            renderFooters: true,
+            className: 'genesis-docx', inWrapper: true,
+            ignoreWidth: false, ignoreHeight: false,
+            renderHeaders: true, renderFooters: true,
           });
           rendered = true;
         } catch (docxErr) {
-          // Not a real DOCX zip — try rendering as plain text
           try {
             const text = await blob.text();
             if (text.trim().length > 0) {
-              const isMarkdown = /^#{1,3} |^\*\*|^\- /m.test(text);
+              const isMarkdown = /^#{1,3} |^\*\*|^- /m.test(text);
               if (isMarkdown) {
                 const html = text
                   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -81,13 +83,11 @@ export default function OfficeViewer({ filePath: initialPath }) {
                   .replace(/^### (.+)$/gm, '<h3>$1</h3>')
                   .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                   .replace(/\*(.+?)\*/g, '<em>$1</em>')
-                  .replace(/`([^`]+)`/g, '<code>$1</code>')
                   .replace(/^- (.+)$/gm, '<li>$1</li>')
-                  .replace(/\n\n/g, '</p><p>')
-                  .replace(/\n/g, '<br/>');
+                  .replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br/>');
                 containerRef.current.innerHTML = `<div class="md-body"><p>${html}</p></div>`;
               } else {
-                containerRef.current.innerHTML = `<div class="p-4"><div class="mb-2 text-xs text-orange-400">⚠ Not a valid DOCX binary — showing as plain text</div><pre class="plaintext">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></div>`;
+                containerRef.current.innerHTML = `<div class="p-4"><div class="mb-2 text-xs text-orange-400">Warning: Not a valid DOCX binary - showing as plain text</div><pre class="plaintext">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></div>`;
               }
               rendered = true;
             }
@@ -95,16 +95,58 @@ export default function OfficeViewer({ filePath: initialPath }) {
           if (!rendered) throw new Error(`Not a valid DOCX file: ${docxErr.message}`);
         }
 
-      } else if (ext === 'xlsx' || ext === 'xls') {
+      } else if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
         const XLSX = await import('xlsx');
-        const arrayBuffer = await blob.arrayBuffer();
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const workbook = ext === 'csv'
+          ? XLSX.read(await blob.text(), { type: 'string' })
+          : XLSX.read(await blob.arrayBuffer(), { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const html = XLSX.utils.sheet_to_html(workbook.Sheets[sheetName]);
         containerRef.current.innerHTML = `<div class="p-4 overflow-auto">${html}</div>`;
 
+      } else if (ext === 'pptx' || ext === 'ppt') {
+        const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+        const slideFiles = Object.keys(zip.files)
+          .filter((name) => /^ppt\/slides\/slide\d+\.xml$/.test(name))
+          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+        const slides = [];
+        for (let idx = 0; idx < slideFiles.length; idx++) {
+          const xml = await zip.file(slideFiles[idx])?.async('string');
+          if (!xml) continue;
+
+          const shapes = [];
+          const spRegex = /<p:sp[\s\S]*?<\/p:sp>/g;
+          let spMatch;
+          while ((spMatch = spRegex.exec(xml)) !== null) {
+            const texts = [...spMatch[0].matchAll(/<a:t>([\s\S]*?)<\/a:t>/g)].map((m) =>
+              m[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+            ).join('');
+            if (texts.trim()) shapes.push(texts.trim());
+          }
+
+          if (!shapes.length) {
+            const flat = [...xml.matchAll(/<a:t>([\s\S]*?)<\/a:t>/g)]
+              .map((m) => m[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'"))
+              .join('\n').trim();
+            if (flat) shapes.push(flat);
+          }
+
+          const [titleText, ...bodyShapes] = shapes;
+          const e = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          const titleHtml = `<div class="slide-title">${e(titleText || `Slide ${idx + 1}`)}</div>`;
+          const bodyHtml = bodyShapes.map((s) => {
+            const lines = s.split('\n').filter(Boolean);
+            return lines.length ? `<ul class="slide-bullets">${lines.map((l) => `<li>${e(l)}</li>`).join('')}</ul>` : '';
+          }).join('');
+
+          slides.push(`<section class="slide-card"><div class="slide-num">Slide ${idx + 1}</div>${titleHtml}${bodyHtml}</section>`);
+        }
+
+        if (!slides.length) throw new Error('No readable slide content found in PPTX file');
+        containerRef.current.innerHTML = `<div class="pptx-view">${slides.join('')}</div>`;
+
       } else {
-        // Unknown format: try plain text
         try {
           const text = await blob.text();
           containerRef.current.innerHTML = `<pre class="plaintext">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
@@ -119,31 +161,108 @@ export default function OfficeViewer({ filePath: initialPath }) {
     }
   };
 
+  const enterEditMode = async () => {
+    if (!currentPath) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/fs/source?path=${encodeURIComponent(currentPath)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { content } = await res.json();
+      setSourceText(content || '');
+      setEditMode(true);
+    } catch (e) {
+      setError(`Could not get source: ${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!currentPath || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/fs/office', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: currentPath, content: sourceText }),
+      });
+      if (!res.ok) {
+        const { error: msg } = await res.json().catch(() => ({}));
+        throw new Error(msg || `HTTP ${res.status}`);
+      }
+      setEditMode(false);
+      await openFile(currentPath);
+    } catch (e) {
+      setError(`Save failed: ${e.message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (initialPath) openFile(initialPath);
   }, [initialPath]);
 
   const fileName = currentPath ? currentPath.split('/').pop() : null;
-  const hasContent = containerRef.current?.innerHTML?.length > 0;
+  const ext = currentPath ? currentPath.split('.').pop().toLowerCase() : '';
+  const isEditable = EDITABLE_EXTS.has(ext);
 
   return (
     <div className="flex flex-col h-full text-white">
-      {/* Persistent toolbar */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-white/8 flex-shrink-0 bg-white/2">
-        <button
-          onClick={() => setShowPicker(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white/8 hover:bg-white/12 rounded-lg text-white/80 text-xs font-medium transition-colors"
-        >
-          <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="rgba(234,179,8,0.8)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 6.5A1.5 1.5 0 013.5 5H7.8a1.5 1.5 0 011.1.48L10.1 6.5H16.5A1.5 1.5 0 0118 8v6.5A1.5 1.5 0 0116.5 16h-13A1.5 1.5 0 012 14.5V6.5z" />
-            <path d="M2 8.5h16" />
-          </svg>
-          Browse
-        </button>
+        {!editMode ? (
+          <button
+            onClick={() => setShowPicker(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/8 hover:bg-white/12 rounded-lg text-white/80 text-xs font-medium transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="rgba(234,179,8,0.8)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 6.5A1.5 1.5 0 013.5 5H7.8a1.5 1.5 0 011.1.48L10.1 6.5H16.5A1.5 1.5 0 0118 8v6.5A1.5 1.5 0 0116.5 16h-13A1.5 1.5 0 012 14.5V6.5z" />
+              <path d="M2 8.5h16" />
+            </svg>
+            Browse
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={saveEdit}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 rounded-lg text-white text-xs font-medium transition-colors"
+            >
+              {saving ? (
+                <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5a2 2 0 012-2h8.586a2 2 0 011.414.586l2.414 2.414A2 2 0 0118 7.414V15a2 2 0 01-2 2H5a2 2 0 01-2-2V5z"/><path d="M7 3v4h6V3M7 13h6"/></svg>
+              )}
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button
+              onClick={() => setEditMode(false)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/8 hover:bg-white/12 rounded-lg text-white/70 text-xs font-medium transition-colors"
+            >
+              Cancel
+            </button>
+          </>
+        )}
+
         {fileName ? (
           <span className="text-white/60 text-xs truncate flex-1" title={currentPath}>{fileName}</span>
         ) : (
-          <span className="text-white/30 text-xs flex-1">No file open — click Browse to open a document</span>
+          <span className="text-white/30 text-xs flex-1">No file open - click Browse to open a document</span>
+        )}
+
+        {isEditable && !editMode && currentPath && (
+          <button
+            onClick={enterEditMode}
+            title="Edit source and regenerate"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/8 hover:bg-white/12 rounded-lg text-white/70 text-xs font-medium transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="rgba(139,92,246,0.9)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M13 3l4 4-9 9H4v-4l9-9z"/>
+            </svg>
+            Edit
+          </button>
         )}
       </div>
 
@@ -152,7 +271,7 @@ export default function OfficeViewer({ filePath: initialPath }) {
           <svg className="animate-spin w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
           </svg>
-          Loading document…
+          Loading document...
         </div>
       )}
 
@@ -164,7 +283,32 @@ export default function OfficeViewer({ filePath: initialPath }) {
             <rect x="2.5" y="2.5" width="15" height="15" rx="1.5" />
             <path d="M2.5 7.5h15M2.5 12.5h15M8 2.5v15" />
           </svg>
-          <p>Click <strong className="text-white/50">Browse</strong> to open a .docx, .xlsx, .md or .txt file</p>
+          <p>Click <strong className="text-white/50">Browse</strong> to open a .docx, .xlsx, .pptx, .md or .txt file</p>
+        </div>
+      )}
+
+      {editMode && !loading && (
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="px-3 py-1.5 bg-violet-900/30 border-b border-violet-500/20 text-violet-300 text-xs">
+            Editing source - changes will regenerate the {ext.toUpperCase()} file on save
+          </div>
+          <div className="flex-1 min-h-0">
+            <Editor
+              height="100%"
+              defaultLanguage="markdown"
+              value={sourceText}
+              onChange={(v) => setSourceText(v ?? '')}
+              theme="vs-dark"
+              options={{
+                fontSize: 13,
+                wordWrap: 'on',
+                minimap: { enabled: false },
+                lineNumbers: 'on',
+                padding: { top: 12 },
+                scrollBeyondLastLine: false,
+              }}
+            />
+          </div>
         </div>
       )}
 
@@ -174,7 +318,7 @@ export default function OfficeViewer({ filePath: initialPath }) {
         style={{
           background: 'rgba(255,255,255,0.97)',
           color: '#1a1a1a',
-          display: loading ? 'none' : 'block',
+          display: loading || editMode ? 'none' : 'block',
         }}
       />
 
@@ -190,12 +334,19 @@ export default function OfficeViewer({ filePath: initialPath }) {
         .md-body code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
         .md-body li { margin: 4px 0 4px 20px; list-style: disc; }
         .plaintext { padding: 24px; font-family: monospace; font-size: 13px; white-space: pre-wrap; word-break: break-word; color: #1a1a1a; }
+        .pptx-view { padding: 24px; display: grid; gap: 18px; background: #f3f4f6; }
+        .slide-card { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px 24px; box-shadow: 0 8px 24px rgba(15,23,42,0.08); }
+        .slide-num { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6366f1; margin-bottom: 10px; }
+        .slide-title { font-size: 22px; font-weight: 700; color: #1e293b; line-height: 1.3; margin-bottom: 14px; }
+        .slide-bullets { margin: 0; padding: 0 0 0 4px; list-style: none; }
+        .slide-bullets li { font-size: 14px; line-height: 1.6; color: #374151; padding: 3px 0 3px 18px; position: relative; }
+        .slide-bullets li::before { content: '\u2022'; position: absolute; left: 0; color: #6366f1; font-weight: 700; }
       `}</style>
 
       <AnimatePresence>
         {showPicker && (
           <FilePicker
-            accept={['docx', 'doc', 'xlsx', 'xls', 'pptx']}
+            accept={['docx', 'doc', 'xlsx', 'xls', 'csv', 'pptx', 'md', 'markdown', 'html', 'htm', 'txt', 'rtf', 'pdf']}
             onSelect={(p) => { openFile(p); setShowPicker(false); }}
             onClose={() => setShowPicker(false)}
           />

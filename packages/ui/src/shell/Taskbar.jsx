@@ -6,7 +6,7 @@ import AIOrb from './AIOrb';
 import { dockIconHover } from '../design/animations';
 
 export default function Taskbar() {
-  const { windows, minimizeWindow, restoreWindow, activeId, focusWindow, openApp, setLauncherOpen, setNotifOpen } = useOS();
+  const { windows, minimizeWindow, restoreWindow, activeId, focusWindow, openApp, setLauncherOpen, setNotifOpen, desktopFullscreen, toggleDesktopFullscreen } = useOS();
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -71,6 +71,33 @@ export default function Taskbar() {
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
             <circle cx="6.5" cy="6.5" r="4.5" />
             <path d="M10 10l3.5 3.5" />
+          </svg>
+        </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.15, y: -2 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={toggleDesktopFullscreen}
+          className="w-9 h-9 rounded-xl glass flex items-center justify-center hover:shadow-glow transition-shadow"
+          style={{ color: desktopFullscreen ? '#A78BFA' : 'rgba(200,198,220,0.7)' }}
+          title={desktopFullscreen ? 'Exit distraction-free full screen' : 'Enter distraction-free full screen'}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            {desktopFullscreen ? (
+              <>
+                <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+                <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+                <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+                <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+              </>
+            ) : (
+              <>
+                <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                <path d="M16 3h3a2 2 0 0 1 2 2v3" />
+                <path d="M8 21H5a2 2 0 0 1-2-2v-3" />
+                <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+              </>
+            )}
           </svg>
         </motion.button>
 

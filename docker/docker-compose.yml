@@ -47,11 +47,14 @@ services:
         condition: service_healthy
       memory:
         condition: service_healthy
+      voice:
+        condition: service_healthy
     volumes:
       - genesis_data:/data
       - ${GENESIS_WORKSPACE:-./workspace}:/workspace
     environment:
       - GENESIS_MODEL=${GENESIS_MODEL:-gemma4:e4b}
+      - GENESIS_MODEL_FALLBACK=${GENESIS_MODEL_FALLBACK:-gemma4:e2b,llama3.2:3b}
       - OLLAMA_BASE_URL=http://ollama:11434
       - GENESIS_PORT=3000
       - GENESIS_DATA_DIR=/data
@@ -77,6 +80,8 @@ services:
       dockerfile: docker/Dockerfile.memory
     container_name: genesis-memory
     restart: unless-stopped
+    ports:
+      - "7701:7701"
     volumes:
       - genesis_data:/data
     environment:
@@ -97,10 +102,15 @@ services:
     restart: unless-stopped
     volumes:
       - genesis_data:/data
+      - ./windows-cas.crt:/usr/local/share/ca-certificates/custom/windows-cas.crt:ro
     environment:
-      - WHISPER_MODEL=${WHISPER_MODEL:-tiny}
+      - WHISPER_MODEL=${WHISPER_MODEL:-base}
       - KOKORO_VOICE=${KOKORO_VOICE:-bf_emma}
       - HF_HOME=/data/hf_cache
+      - HF_HUB_DISABLE_XET=1
+      - REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+      - CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+      - GENESIS_ALLOW_INSECURE_TLS=${GENESIS_ALLOW_INSECURE_TLS:-true}
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:7702/health')"]
       interval: 30s

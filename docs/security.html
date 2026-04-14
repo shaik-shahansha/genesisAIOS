@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Genesis OS security and privacy — local-first architecture, zero cloud telemetry, approval gates, open source guarantee, and data model explained." />
+  <title>Security & Privacy — Genesis OS</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%237c3aed'/><text y='24' x='4' font-size='22'>⚡</text></svg>" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+  <style>
+    .guarantee-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .guarantee-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      padding: 28px;
+      transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
+    }
+    .guarantee-card:hover { border-color: var(--border-accent); transform: translateY(-2px); }
+    .guarantee-card .check {
+      width: 40px; height: 40px;
+      background: #d1fae5;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      margin-bottom: 14px;
+    }
+    [data-theme="dark"] .guarantee-card .check { background: rgba(6,78,59,0.3); }
+
+    .data-flow {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      overflow: hidden;
+    }
+    .data-flow-section {
+      padding: 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .data-flow-section:last-child { border-bottom: none; }
+    .data-flow-icon {
+      width: 40px; height: 40px;
+      border-radius: var(--r);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .data-flow-section.stays   .data-flow-icon { background: #d1fae5; }
+    .data-flow-section.blocked .data-flow-icon { background: #fee2e2; }
+    .data-flow-section.opt     .data-flow-icon { background: #fef3c7; }
+    [data-theme="dark"] .data-flow-section.stays   .data-flow-icon { background: rgba(6,78,59,0.3); }
+    [data-theme="dark"] .data-flow-section.blocked .data-flow-icon { background: rgba(127,29,29,0.3); }
+    [data-theme="dark"] .data-flow-section.opt     .data-flow-icon { background: rgba(120,53,15,0.3); }
+    .data-flow-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+    .data-flow-list { font-size: 0.85rem; color: var(--text-3); line-height: 1.7; }
+
+    .approval-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      overflow: hidden;
+    }
+    .approval-step {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.875rem;
+    }
+    .approval-step:last-child { border-bottom: none; }
+    .approval-step-num {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--accent-100);
+      color: var(--accent);
+      font-weight: 700; font-size: 0.78rem;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .approval-step-icon { font-size: 1.2rem; flex-shrink: 0; }
+    .approval-step-text { flex: 1; }
+    .approval-step-text strong { color: var(--text); }
+
+    .faq-list { display: flex; flex-direction: column; gap: 1px; background: var(--border); border-radius: var(--r-md); overflow: hidden; }
+    .accordion-item { background: var(--bg-card); }
+    .accordion-trigger {
+      width: 100%; padding: 18px 24px;
+      text-align: left; background: none; border: none;
+      cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+      font-size: 0.95rem; font-weight: 600; color: var(--text); font-family: var(--font);
+    }
+    .accordion-trigger:hover { background: var(--bg-alt); }
+    .accordion-chevron {
+      font-size: 0.8rem; color: var(--text-3);
+      transition: transform var(--dur) var(--ease);
+    }
+    .accordion-item.open .accordion-chevron { transform: rotate(180deg); }
+    .accordion-content {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.3s ease;
+      font-size: 0.9rem; color: var(--text-3); line-height: 1.7;
+      padding: 0 24px;
+    }
+    .accordion-item.open .accordion-content { padding-bottom: 18px; }
+
+    .open-source-box {
+      background: var(--accent-50);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--r-xl);
+      padding: 40px;
+      text-align: center;
+    }
+
+    @media (max-width: 768px) {
+      .guarantee-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 1024px) {
+      .guarantee-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo"><div class="nav-logo-icon">⚡</div><span>Genesis OS</span></a>
+    <div class="nav-links">
+      <a href="features.html"     class="nav-link" data-page="features.html">Features</a>
+      <a href="architecture.html" class="nav-link" data-page="architecture.html">Architecture</a>
+      <a href="use-cases.html"    class="nav-link" data-page="use-cases.html">Use Cases</a>
+      <a href="security.html"     class="nav-link" data-page="security.html">Security</a>
+      <a href="roadmap.html"      class="nav-link" data-page="roadmap.html">Roadmap</a>
+    </div>
+    <div class="nav-actions">
+      <button class="nav-theme-btn">🌙</button>
+      <a href="https://github.com/shahansha/genesis-os" class="nav-github" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        <span>GitHub</span>
+      </a>
+      <button class="nav-hamburger" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</nav>
+<div class="nav-mobile" id="mobile-nav">
+  <a href="features.html"     class="nav-link" data-page="features.html">Features</a>
+  <a href="architecture.html" class="nav-link" data-page="architecture.html">Architecture</a>
+  <a href="use-cases.html"    class="nav-link" data-page="use-cases.html">Use Cases</a>
+  <a href="security.html"     class="nav-link" data-page="security.html">Security</a>
+  <a href="roadmap.html"      class="nav-link" data-page="roadmap.html">Roadmap</a>
+</div>
+
+<main>
+
+<!-- PAGE HERO -->
+<section class="page-hero">
+  <div class="container">
+    <div class="page-hero-label">Security & Privacy</div>
+    <h1>Your data.<br><span class="gradient-text">Your machine. Full stop.</span></h1>
+    <p>Genesis OS was designed from day one with a single non-negotiable constraint: your data never leaves your hardware without your explicit, knowing consent.</p>
+    <div class="privacy-shield" aria-hidden="true">🛡️</div>
+  </div>
+</section>
+
+<!-- ═══ CORE GUARANTEES ═══ -->
+<section class="section">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Privacy Guarantees</div>
+      <h2 class="text-display">Six commitments<br>that cannot be revoked</h2>
+    </div>
+
+    <div class="guarantee-grid stagger">
+      <div class="guarantee-card fade-up">
+        <div class="check">✓</div>
+        <h3 class="card-title">Zero cloud telemetry</h3>
+        <p class="card-desc">Genesis never calls home. No analytics, no error reporting, no A/B testing. There are no remote servers to send data to — because Genesis doesn't have any.</p>
+      </div>
+      <div class="guarantee-card fade-up">
+        <div class="check">✓</div>
+        <h3 class="card-title">No cloud LLM APIs</h3>
+        <p class="card-desc">All AI inference runs locally via Ollama. Your prompts, conversations, and context never touch OpenAI, Anthropic, Google, or any external API. Zero. Always.</p>
+      </div>
+      <div class="guarantee-card fade-up">
+        <div class="check">✓</div>
+        <h3 class="card-title">Air-gap compatible</h3>
+        <p class="card-desc">The full Genesis OS stack — including model weights, database, and voice — operates with no internet connection whatsoever. Pull the ethernet cable and everything still works.</p>
+      </div>
+      <div class="guarantee-card fade-up">
+        <div class="check">✓</div>
+        <h3 class="card-title">You control your memory</h3>
+        <p class="card-desc">All memories are append-only. Nothing is silently deleted. To remove a memory, you make an explicit <code style="font-family:var(--font-mono);font-size:0.85em;background:var(--bg-deeper);padding:2px 5px;border-radius:4px;">memory.delete(id)</code> API call — always initiated by you.</p>
+      </div>
+      <div class="guarantee-card fade-up">
+        <div class="check">✓</div>
+        <h3 class="card-title">Open source — verify it yourself</h3>
+        <p class="card-desc">The entire codebase is MIT licensed and publicly auditable. If you don't trust us, read the code. Every network call, every data write, every LLM prompt can be inspected.</p>
+      </div>
+      <div class="guarantee-card fade-up">
+        <div class="check">✓</div>
+        <h3 class="card-title">Destructive action approval</h3>
+        <p class="card-desc">Before any tool that writes files, executes shell commands, or sends messages runs, the UI shows you exactly what will happen and waits for your explicit confirmation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ DATA FLOWS ═══ -->
+<section class="section" style="background: var(--bg-alt);" id="privacy">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Data Model</div>
+      <h2 class="text-display">Where your data<br>goes — and doesn't</h2>
+    </div>
+
+    <div class="grid-2 stagger" style="align-items:start;">
+      <div class="fade-up">
+        <div class="data-flow">
+          <div class="data-flow-section stays">
+            <div class="data-flow-icon">🏠</div>
+            <div>
+              <div class="data-flow-title" style="color:#059669;">Stays on your machine — always</div>
+              <div class="data-flow-list">
+                Your conversations and chat history<br>
+                All files in your workspace<br>
+                ChromaDB vector embeddings<br>
+                SQLite memory database<br>
+                Voice recordings and transcriptions<br>
+                Screenshots and camera captures<br>
+                Your identity profile and preferences<br>
+                LLM model weights (via Ollama volumes)
+              </div>
+            </div>
+          </div>
+          <div class="data-flow-section blocked">
+            <div class="data-flow-icon">🚫</div>
+            <div>
+              <div class="data-flow-title" style="color:#dc2626;">Never leaves — no exceptions</div>
+              <div class="data-flow-list">
+                Chat prompts and AI responses<br>
+                Tool execution arguments<br>
+                File contents read by the AI<br>
+                Voice audio or transcriptions<br>
+                Error logs or stack traces<br>
+                Usage statistics or metrics
+              </div>
+            </div>
+          </div>
+          <div class="data-flow-section opt">
+            <div class="data-flow-icon">⚙️</div>
+            <div>
+              <div class="data-flow-title" style="color:#d97706;">Leaves only if you explicitly configure it</div>
+              <div class="data-flow-list">
+                Web search (only search query, via local SearxNG)<br>
+                Email (only when you explicitly say "send email")<br>
+                URLs fetched by AI Browser (only the URL, not your identity)<br>
+                Cloud model APIs (opt-in plugin only, not installed by default)
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card fade-up" style="margin-bottom:20px;">
+          <div class="card-icon">🔒</div>
+          <h3 class="card-title">Network isolation</h3>
+          <p class="card-desc">In Docker, all services communicate over an isolated Docker network. The daemon, Ollama, memory, and voice sidecars are not exposed to the public internet by default. Port 3000 serves only the UI.</p>
+        </div>
+
+        <div class="card fade-up" style="margin-bottom:20px;">
+          <div class="card-icon">🗄️</div>
+          <h3 class="card-title">Storage encryption</h3>
+          <p class="card-desc">Genesis stores data in <code style="font-family:var(--font-mono);font-size:0.85em;background:var(--bg-deeper);padding:2px 5px;border-radius:4px;">GENESIS_DATA_DIR</code> (default: <code style="font-family:var(--font-mono);font-size:0.85em;background:var(--bg-deeper);padding:2px 5px;border-radius:4px;">./data</code>). Enable full-disk encryption on your OS (LUKS, FileVault, BitLocker) for at-rest encryption — Genesis doesn't need to do anything extra.</p>
+        </div>
+
+        <div class="card fade-up">
+          <div class="card-icon">👤</div>
+          <h3 class="card-title">Authentication</h3>
+          <p class="card-desc">The daemon includes optional JWT authentication middleware (<code style="font-family:var(--font-mono);font-size:0.85em;background:var(--bg-deeper);padding:2px 5px;border-radius:4px;">packages/daemon/src/auth.js</code>). Pair with Caddy + Authelia for secure LAN access when hosting for a small team.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ APPROVAL SYSTEM ═══ -->
+<section class="section">
+  <div class="container">
+    <div class="feature-split">
+      <div class="feature-content fade-up">
+        <div class="section-label">Approval System</div>
+        <h2 class="feature-title">Every destructive action<br>waits for you</h2>
+        <p class="feature-desc">
+          <code style="font-family:var(--font-mono);font-size:0.85em;background:var(--bg-deeper);padding:2px 6px;border-radius:4px;">GENESIS_APPROVAL_MODE=true</code> (the default) means the AI can never write files,
+          run shell commands, send emails, or delete anything without presenting you a clear confirmation UI first.
+          You see exactly what will run, can edit it, or cancel.
+        </p>
+        <ul class="feature-list">
+          <li>Every tool with <code style="font-family:var(--font-mono);font-size:0.85em;">requiresApproval: true</code> emits to the event bus</li>
+          <li>UI shows command/arguments with syntax highlighting before executing</li>
+          <li>Approve, edit, or reject — all within the chat interface</li>
+          <li>Audit log of every approved/rejected action persisted in SQLite</li>
+          <li>Set <code style="font-family:var(--font-mono);font-size:0.85em;">GENESIS_APPROVAL_MODE=false</code> for fully autonomous mode (power users)</li>
+        </ul>
+      </div>
+
+      <div class="feature-visual fade-up">
+        <h3 class="text-h3" style="margin-bottom:16px;">Approval flow</h3>
+        <div class="approval-flow">
+          <div class="approval-step" style="background:var(--bg-alt);">
+            <div class="approval-step-num">1</div>
+            <div class="approval-step-icon">💬</div>
+            <div class="approval-step-text">User says: <strong>"Delete all .log files from /var/logs"</strong></div>
+          </div>
+          <div class="approval-step">
+            <div class="approval-step-num">2</div>
+            <div class="approval-step-icon">🧠</div>
+            <div class="approval-step-text">AI plans tool call: <strong>run_shell("find /var/logs -name '*.log' -delete")</strong></div>
+          </div>
+          <div class="approval-step" style="background:var(--bg-alt);">
+            <div class="approval-step-num">3</div>
+            <div class="approval-step-icon">🛑</div>
+            <div class="approval-step-text">Tool has <strong>requiresApproval: true</strong> → emits <code style="font-family:var(--font-mono);font-size:0.8em;">approval_required</code> on bus</div>
+          </div>
+          <div class="approval-step">
+            <div class="approval-step-num">4</div>
+            <div class="approval-step-icon">🪟</div>
+            <div class="approval-step-text">UI displays confirmation card with exact command, estimated files affected (23)</div>
+          </div>
+          <div class="approval-step" style="background:var(--bg-alt);">
+            <div class="approval-step-num">5</div>
+            <div class="approval-step-icon">✅</div>
+            <div class="approval-step-text">User clicks <strong>Approve</strong> → command runs. Or <strong>Cancel</strong> → nothing happens.</div>
+          </div>
+          <div class="approval-step">
+            <div class="approval-step-num">6</div>
+            <div class="approval-step-icon">💾</div>
+            <div class="approval-step-text">Decision logged to SQLite: <strong>who, what, when, approved/rejected</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ THREAT MODEL ═══ -->
+<section class="section" style="background: var(--bg-alt);">
+  <div class="container">
+    <div class="section-header fade-up">
+      <div class="section-label">Threat Model</div>
+      <h2 class="text-display">What Genesis protects<br>against</h2>
+      <p class="text-lead" style="margin-top:16px;">Honest about what's in scope — and what isn't.</p>
+    </div>
+
+    <div class="grid-3 stagger">
+      <div class="threat-card card fade-up">
+        <div class="flag">✓ Mitigated</div>
+        <h3 class="card-title">Prompt injection via file content</h3>
+        <p class="card-desc">When reading files before the LLM, content is clearly demarcated as data — not instructions. The system prompt includes explicit instructions against treating file content as commands.</p>
+      </div>
+      <div class="threat-card card fade-up">
+        <div class="flag">✓ Mitigated</div>
+        <h3 class="card-title">Runaway shell commands</h3>
+        <p class="card-desc">Shell execution is gated behind the approval system. The AI cannot run destructive commands without user confirmation. Approval mode is enabled by default and requires explicit opt-out.</p>
+      </div>
+      <div class="threat-card card fade-up">
+        <div class="flag">✓ Mitigated</div>
+        <h3 class="card-title">Data exfiltration via web requests</h3>
+        <p class="card-desc">The AI Browser makes HTTP requests through a daemon proxy. The proxy does not include any session state, memory content, or identifying information in proxied requests.</p>
+      </div>
+      <div class="threat-card card fade-up">
+        <div class="flag">✓ Mitigated</div>
+        <h3 class="card-title">Unauthorised local access</h3>
+        <p class="card-desc">JWT authentication middleware protects the daemon API. The lock screen in the UI prevents casual access on shared machines. Combine with OS-level auth for full protection.</p>
+      </div>
+      <div class="threat-card card fade-up">
+        <div class="flag warning">⚠️ User responsibility</div>
+        <h3 class="card-title">Physical machine access</h3>
+        <p class="card-desc">Genesis doesn't encrypt data at rest itself — use your OS's full-disk encryption (LUKS/FileVault/BitLocker). A physically compromised machine is outside Genesis's security boundary.</p>
+      </div>
+      <div class="threat-card card fade-up">
+        <div class="flag warning">⚠️ Out of scope</div>
+        <h3 class="card-title">Malicious Ollama models</h3>
+        <p class="card-desc">Genesis trusts the model weights you've configured. Only pull models from the official Ollama library or sources you trust. Malicious model weights are outside Genesis's threat model.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ OPEN SOURCE ═══ -->
+<section class="section">
+  <div class="container">
+    <div class="open-source-box fade-up" style="max-width:800px; margin:0 auto;">
+      <div style="font-size:3rem; margin-bottom:16px;">📖</div>
+      <h2 class="text-h1" style="margin-bottom:16px;">Don't trust us. <em>Read the code.</em></h2>
+      <p style="font-size:1rem; color:var(--text-2); line-height:1.75; margin-bottom:28px;">
+        Genesis OS is MIT licensed. Every line of code — from the daemon's LLM client to the memory sidecar — is publicly auditable.
+        If you want to verify that we're not logging your data, stealing your keys, or phoning home: <strong>the answer is in the source</strong>.
+        No audit required, no NDAs, no "trust the privacy policy."
+      </p>
+      <div class="flex-center gap-12" style="flex-wrap:wrap;">
+        <a href="https://github.com/shahansha/genesis-os" class="btn btn-primary btn-lg" target="_blank" rel="noopener">Read the Source on GitHub →</a>
+        <a href="https://github.com/shahansha/genesis-os/blob/main/packages/daemon/src/llm/client.js" class="btn btn-ghost btn-lg" target="_blank" rel="noopener">Inspect LLM Client</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FAQ ═══ -->
+<section class="section" style="background: var(--bg-alt);">
+  <div class="container container-sm">
+    <div class="section-header fade-up">
+      <div class="section-label">FAQ</div>
+      <h2 class="text-display">Security questions,<br>answered honestly</h2>
+    </div>
+
+    <div class="faq-list fade-up">
+      <div class="accordion-item">
+        <button class="accordion-trigger">
+          Does Genesis OS ever send my conversations to OpenAI or any cloud?
+          <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-content">
+          No. All LLM inference runs through Ollama on your local machine. There are no OpenAI, Anthropic, or Google API keys in the codebase. Cloud AI providers are explicitly listed under "What NOT to do" in the architecture spec. If you don't believe us, search the source for any <code style="font-family:var(--font-mono);">fetch('https://api.openai.com')</code> calls — you won't find any.
+        </div>
+      </div>
+      <div class="accordion-item">
+        <button class="accordion-trigger">
+          Can the AI access files outside my workspace directory?
+          <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-content">
+          No. The <code style="font-family:var(--font-mono);">read_file</code> and <code style="font-family:var(--font-mono);">write_file</code> tools join all paths to <code style="font-family:var(--font-mono);">GENESIS_PROJECT_ROOT</code> using <code style="font-family:var(--font-mono);">path.join()</code>. Path traversal attempts (e.g. <code style="font-family:var(--font-mono);">../../etc/passwd</code>) are caught and blocked. The workspace root is the security boundary for file operations.
+        </div>
+      </div>
+      <div class="accordion-item">
+        <button class="accordion-trigger">
+          Is voice audio stored or transmitted anywhere?
+          <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-content">
+          Voice audio is captured via the Web Audio API, streamed to the local voice sidecar (port 7702), transcribed with faster-whisper, and immediately discarded. The audio bytes never touch a remote server. Only the text transcription is passed to the daemon.
+        </div>
+      </div>
+      <div class="accordion-item">
+        <button class="accordion-trigger">
+          What happens to my memories if I stop using Genesis OS?
+          <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-content">
+          Your memories are stored in <code style="font-family:var(--font-mono);">GENESIS_DATA_DIR/chroma</code> (ChromaDB) and <code style="font-family:var(--font-mono);">GENESIS_DATA_DIR/genesis.db</code> (SQLite). These are standard files on your filesystem. You can copy, back up, export, or delete them at any time. Genesis has no lock-in on your own data.
+        </div>
+      </div>
+      <div class="accordion-item">
+        <button class="accordion-trigger">
+          Can I use Genesis OS on a corporate machine or with sensitive work documents?
+          <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-content">
+          Yes — assuming your corporate policy allows local AI tools. Because Genesis runs entirely offline and never calls external APIs, it doesn't carry the data governance risks of cloud AI tools. For extra assurance, enable <code style="font-family:var(--font-mono);">GENESIS_APPROVAL_MODE=true</code> and review the approval logs regularly.
+        </div>
+      </div>
+      <div class="accordion-item">
+        <button class="accordion-trigger">
+          Does the AI Browser expose my browsing to any third parties?
+          <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-content">
+          When you browse via the AI Browser, pages are fetched through the daemon's <code style="font-family:var(--font-mono);">/api/browse</code> proxy. This proxy makes standard HTTP requests — no cookies, session tokens, or identity information are added. Your IP address is the only identifier that remote websites can see, which is the same as any direct browser request.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section">
+  <div class="container">
+    <div class="cta-banner fade-up">
+      <h2>Privacy isn't a feature.<br>It's the foundation.</h2>
+      <p>Start using an AI that you can fully trust — because you can fully verify it.</p>
+      <div class="flex-center gap-12" style="flex-wrap:wrap;">
+        <a href="architecture.html#quickstart" class="btn btn-white btn-lg">Get Started</a>
+        <a href="https://github.com/shahansha/genesis-os" class="btn btn-outline-white btn-lg" target="_blank" rel="noopener">Read the Source →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="index.html" class="nav-logo" style="display:inline-flex;"><div class="nav-logo-icon">⚡</div><span>Genesis OS</span></a>
+        <p>AI-native operating system. Local-first. Privacy-preserving. Built by Shahansha Shaik.</p>
+        <div class="footer-social">
+          <a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener" aria-label="GitHub">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          </a>
+        </div>
+      </div>
+      <div class="footer-col"><h4>Product</h4><ul>
+        <li><a href="features.html">Features</a></li>
+        <li><a href="architecture.html">Architecture</a></li>
+        <li><a href="use-cases.html">Use Cases</a></li>
+        <li><a href="roadmap.html">Roadmap</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Security</h4><ul>
+        <li><a href="security.html">Security Model</a></li>
+        <li><a href="security.html#privacy">Data Model</a></li>
+        <li><a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener">Source Code</a></li>
+      </ul></div>
+      <div class="footer-col"><h4>Community</h4><ul>
+        <li><a href="https://github.com/shahansha/genesis-os" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://github.com/shahansha/genesis-os/issues" target="_blank" rel="noopener">Issues</a></li>
+        <li><a href="roadmap.html#contribute">Contribute</a></li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2025 Genesis OS. MIT License.</p>
+      <div class="footer-bottom-links">
+        <a href="security.html#privacy">Privacy</a>
+        <a href="https://github.com/shahansha/genesis-os/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>

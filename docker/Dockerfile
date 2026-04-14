@@ -16,9 +16,22 @@ FROM node:20-slim AS daemon
 
 # node-pty requires python3/make/g++ to compile its native addon.
 # curl is needed to pre-download node headers (bypassing corporate SSL proxy with -k).
+# Other tools are used by the agentic bash tool: git, jq, wget, zip, unzip, bc, file,
+# procps (ps/top), findutils, grep, sed, gawk, ca-certificates for curl HTTPS.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 make g++ ca-certificates curl \
+    python3 python3-pip python3-venv make g++ ca-certificates curl \
+    git jq wget zip unzip bc file procps findutils grep sed gawk \
     && rm -rf /var/lib/apt/lists/*
+
+# Allow pip to install into the system Python without a venv (PEP 668 override).
+# This lets the AI agent run `pip install <pkg>` freely inside the container.
+RUN pip3 config set global.break-system-packages true
+
+# Pre-install common Python packages the AI agent frequently needs.
+RUN pip3 install --no-cache-dir \
+    pandas openpyxl xlrd numpy requests beautifulsoup4 \
+    Pillow matplotlib lxml python-docx \
+    pypdf pdfplumber
 
 WORKDIR /app
 
@@ -41,7 +54,7 @@ RUN npm_config_nodedir=/root/.node-gyp/$(node --version | sed 's/v//') \
 # Copy built UI into daemon's dist folder
 COPY --from=ui-builder /app/packages/daemon/dist ./packages/daemon/dist
 
-COPY packages/daemon ./packages/daemon
+COPY packages/daemon/src ./packages/daemon/src
 
 # Workspace data volume mount point
 RUN mkdir -p /workspace /data
