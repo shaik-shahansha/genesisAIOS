@@ -31,6 +31,11 @@ async function start() {
   // Serve built UI
   app.use(express.static(UI_DIST));
 
+  // Public config endpoint — no auth required
+  app.get('/api/config', (_req, res) => {
+    res.json({ demoMode: process.env.DEMO_MODE === 'true' });
+  });
+
   // API routes
   app.use('/api/auth', require('./routes/auth'));
   app.use('/api', auth.requireAuth);

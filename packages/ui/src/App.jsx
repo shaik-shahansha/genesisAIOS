@@ -24,6 +24,7 @@ export default function App() {
   const [orbState, setOrbState] = useState('idle'); // idle | listening | thinking | speaking
   const [splashDone, setSplashDone] = useState(false);
   const [authState, setAuthState] = useState({ checked: false, passwordSet: false, authenticated: true });
+  const [demoMode, setDemoMode] = useState(false);
   const [desktopFullscreen, setDesktopFullscreen] = useState(Boolean(document.fullscreenElement));
   // Created mini-apps loaded from API for Desktop tiles
   const [userApps, setUserApps] = useState([]);
@@ -72,6 +73,10 @@ export default function App() {
 
   useEffect(() => {
     refreshAuth();
+    fetch('/api/config')
+      .then((r) => r.json())
+      .then((d) => setDemoMode(!!d.demoMode))
+      .catch(() => {});
   }, [refreshAuth]);
 
   const openApp = useCallback((appId, props = {}) => {
@@ -148,6 +153,7 @@ export default function App() {
     toggleDesktopFullscreen,
     authState,
     refreshAuth,
+    demoMode,
     userApps,
     fetchUserApps,
   };

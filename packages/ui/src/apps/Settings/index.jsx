@@ -93,7 +93,7 @@ function isInstalledModel(installedModels, requestedTag) {
 }
 
 export default function Settings() {
-  const { authState, refreshAuth } = useOS();
+  const { authState, refreshAuth, demoMode } = useOS();
   const [models, setModels] = useState([]);
   const [currentModel, setCurrentModel] = useState(localStorage.getItem('genesis_model') || '');
   const [accent, setAccent] = useState(localStorage.getItem('genesis_accent') || '#7C3AED');
@@ -277,53 +277,57 @@ export default function Settings() {
         <h2 className="text-xl font-semibold text-white/90">Settings</h2>
 
         <Section title="Security">
-          <div className="flex flex-col gap-3">
-            <p className="text-white/65 text-sm">
-              {authState?.passwordSet
-                ? 'Genesis OS is protected with a local password and session cookie.'
-                : 'No password is set. Enable a password to protect file access, terminal access, and AI actions.'}
-            </p>
-            {authState?.passwordSet && (
+          {demoMode ? (
+            <p className="text-white/40 text-sm">Security settings are disabled in demo mode.</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <p className="text-white/65 text-sm">
+                {authState?.passwordSet
+                  ? 'Genesis OS is protected with a local password and session cookie.'
+                  : 'No password is set. Enable a password to protect file access, terminal access, and AI actions.'}
+              </p>
+              {authState?.passwordSet && (
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Current password"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-accent"
+                />
+              )}
               <input
                 type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Current password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={authState?.passwordSet ? 'New password' : 'Create password'}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-accent"
               />
-            )}
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder={authState?.passwordSet ? 'New password' : 'Create password'}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-accent"
-            />
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm password"
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-accent"
-            />
-            {securityError && <div className="text-red-300 text-sm">{securityError}</div>}
-            {securityMessage && <div className="text-green-300 text-sm">{securityMessage}</div>}
-            <div className="flex items-center gap-2">
-              <button onClick={savePassword} className="px-4 py-2 bg-accent hover:bg-accent-light rounded-xl text-white font-medium text-sm transition-colors">
-                {authState?.passwordSet ? 'Update Password' : 'Enable Password'}
-              </button>
-              {authState?.passwordSet && (
-                <>
-                  <button onClick={removePassword} className="px-4 py-2 bg-white/8 hover:bg-white/12 rounded-xl text-white/85 font-medium text-sm transition-colors">
-                    Remove Password
-                  </button>
-                  <button onClick={logout} className="px-4 py-2 bg-white/8 hover:bg-white/12 rounded-xl text-white/85 font-medium text-sm transition-colors">
-                    Lock Now
-                  </button>
-                </>
-              )}
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-accent"
+              />
+              {securityError && <div className="text-red-300 text-sm">{securityError}</div>}
+              {securityMessage && <div className="text-green-300 text-sm">{securityMessage}</div>}
+              <div className="flex items-center gap-2">
+                <button onClick={savePassword} className="px-4 py-2 bg-accent hover:bg-accent-light rounded-xl text-white font-medium text-sm transition-colors">
+                  {authState?.passwordSet ? 'Update Password' : 'Enable Password'}
+                </button>
+                {authState?.passwordSet && (
+                  <>
+                    <button onClick={removePassword} className="px-4 py-2 bg-white/8 hover:bg-white/12 rounded-xl text-white/85 font-medium text-sm transition-colors">
+                      Remove Password
+                    </button>
+                    <button onClick={logout} className="px-4 py-2 bg-white/8 hover:bg-white/12 rounded-xl text-white/85 font-medium text-sm transition-colors">
+                      Lock Now
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </Section>
 
         {/* AI Model */}
@@ -349,6 +353,7 @@ export default function Settings() {
         </Section>
 
         {/* Download Models */}
+        {!demoMode && (
         <Section title="Download Models">
           <p className="text-white/45 text-xs mb-3">One-click download via Ollama. Large files — use on a good connection.</p>
           <div className="flex flex-col gap-2.5">
@@ -412,6 +417,7 @@ export default function Settings() {
             })}
           </div>
         </Section>
+        )}
 
         {/* Accent color */}
         <Section title="Accent Colour">

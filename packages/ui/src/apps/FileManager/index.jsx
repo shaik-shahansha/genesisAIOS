@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { stagger, staggerItem } from '../../design/animations';
 import { createOfficeTemplate } from './officeTemplates';
+import { useOS } from '../../App';
 
 const OFFICE_EXTENSIONS = new Set(['doc', 'docx', 'xlsx', 'xls', 'ppt', 'pptx', 'md', 'markdown', 'html', 'htm', 'txt', 'rtf', 'csv']);
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico', 'avif']);
@@ -34,6 +35,7 @@ function getIcon(item) {
 }
 
 export default function FileManager({ winId }) {
+  const { demoMode } = useOS();
   const [cwd, setCwd] = useState('');
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -205,25 +207,29 @@ export default function FileManager({ winId }) {
         <button onClick={() => { setPendingAction('folder'); setEntryName(''); }} className="text-white/60 hover:text-white text-xs px-2 py-1 rounded-md hover:bg-white/6">New Folder</button>
 
         {/* Upload */}
-        <button
-          onClick={() => uploadInputRef.current?.click()}
-          disabled={uploading}
-          title="Upload files from your PC"
-          className="flex items-center gap-1 text-white/60 hover:text-white disabled:opacity-40 text-xs px-2 py-1 rounded-md hover:bg-white/6 transition-colors"
-        >
-          <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10 14V4M6 8l4-4 4 4"/>
-            <path d="M3 16h14"/>
-          </svg>
-          {uploading ? uploadProgress : 'Upload'}
-        </button>
-        <input
-          ref={uploadInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={handleUpload}
-        />
+        {!demoMode && (
+          <>
+            <button
+              onClick={() => uploadInputRef.current?.click()}
+              disabled={uploading}
+              title="Upload files from your PC"
+              className="flex items-center gap-1 text-white/60 hover:text-white disabled:opacity-40 text-xs px-2 py-1 rounded-md hover:bg-white/6 transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 14V4M6 8l4-4 4 4"/>
+                <path d="M3 16h14"/>
+              </svg>
+              {uploading ? uploadProgress : 'Upload'}
+            </button>
+            <input
+              ref={uploadInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={handleUpload}
+            />
+          </>
+        )}
 
         {/* Breadcrumbs */}
         <div className="flex items-center gap-1 flex-1 overflow-x-auto">
