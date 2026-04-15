@@ -41,14 +41,30 @@ function parseMd(text) {
       }
       blocks.push({ type: 'numbered', items }); continue;
     }
+    // Markdown table — collect all consecutive | lines
+    if (/^\|/.test(line)) {
+      const tableLines = [];
+      while (i < lines.length && /^\|/.test(lines[i])) { tableLines.push(lines[i]); i++; }
+      let headers = [];
+      let rows = [];
+      if (tableLines.length >= 2 && isTableSepRow(tableLines[1])) {
+        headers = parseTableRow(tableLines[0]);
+        rows = tableLines.slice(2).filter((r) => !isTableSepRow(r)).map(parseTableRow);
+      } else {
+        rows = tableLines.filter((r) => !isTableSepRow(r)).map(parseTableRow);
+      }
+      if (headers.length || rows.length) blocks.push({ type: 'table', headers, rows });
+      continue;
+    }
     if (!line.trim()) { i++; continue; }
     const paraLines = [];
     while (
       i < lines.length && lines[i].trim() &&
       !lines[i].match(/^#{1,6}\s/) &&
       !/^[\*\-\+]\s+/.test(lines[i]) &&
-      !/^\d+[\.\)]\s+/.test(lines[i]) &&
-      !/^[-*=]{3,}\s*$/.test(lines[i].trim())
+      !/^\d+[\.]\)\s+/.test(lines[i]) &&
+      !/^[-*=]{3,}\s*$/.test(lines[i].trim()) &&
+      !/^\|/.test(lines[i])
     ) { paraLines.push(lines[i]); i++; }
     if (paraLines.length) blocks.push({ type: 'paragraph', text: paraLines.join(' ') });
   }
@@ -67,7 +83,34 @@ function stripInlineMd(text) {
     .trim();
 }
 
+function parseTableRow(line) {
+  return line.replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+}
+
+function isTableSepRow(line) {
+  // Matches separator rows like | :--- | :---: | ---: |
+  return /^\|?\s*:?-{2,}:?(\s*\|\s*:?-{2,}:?)+\s*\|?\s*$/.test(line);
+}
+
 // ── DOCX helpers ─────────────────────────────────────────────────────────────
+
+function buildDocxTable({ headers, rows }) {
+  const border = 'w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"';
+  const tblBorders = `<w:tblBorders><w:top ${border}/><w:left ${border}/><w:bottom ${border}/><w:right ${border}/><w:insideH ${border}/><w:insideV ${border}/></w:tblBorders>`;
+  const buildRow = (cells, isHeader) => {
+    const cellsXml = cells.map((cell) => {
+      const shading = isHeader ? '<w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="1B3A6B"/><w:tcMar><w:top w:w="60" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tcMar></w:tcPr>' : '<w:tcPr><w:tcMar><w:top w:w="60" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tcMar></w:tcPr>';
+      const runs = isHeader
+        ? `<w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/></w:rPr><w:t xml:space="preserve">${escapeXml(stripInlineMd(cell))}</w:t></w:r>`
+        : buildWordRuns(cell);
+      return `<w:tc>${shading}<w:p>${runs}</w:p></w:tc>`;
+    }).join('');
+    return `<w:tr>${cellsXml}</w:tr>`;
+  };
+  const headerXml = headers.length ? buildRow(headers, true) : '';
+  const dataXml = rows.map((r) => buildRow(r, false)).join('');
+  return `<w:tbl><w:tblPr><w:tblW w:w="0" w:type="auto"/>${tblBorders}</w:tblPr>${headerXml}${dataXml}</w:tbl>`;
+}
 
 function buildWordRuns(text) {
   const regex = /\*\*\*([^*]+)\*\*\*|\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|([^*`]+)/g;
@@ -99,6 +142,9 @@ function buildDocxParagraphs(text) {
     }
     if (block.type === 'hr') {
       return '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="CCCCCC"/></w:pBdr></w:pPr></w:p>';
+    }
+    if (block.type === 'table') {
+      return buildDocxTable(block);
     }
     return `<w:p>${buildWordRuns(block.text)}</w:p>`;
   }).join('');
@@ -438,6 +484,47 @@ async function createPdfBuffer(text) {
     } else if (block.type === 'hr') {
       cursorY -= 6;
       if (cursorY > marginBottom) page.drawLine({ start: { x: marginX, y: cursorY }, end: { x: pageWidth - marginX, y: cursorY }, thickness: 0.5, color: rgb(0.7, 0.7, 0.7) });
+      cursorY -= 10;
+    } else if (block.type === 'table') {
+      const allRows = block.headers.length ? [block.headers, ...block.rows] : block.rows;
+      if (!allRows.length) continue;
+      const colCount = Math.max(...allRows.map((r) => r.length));
+      if (!colCount) continue;
+      const colWidth = maxWidth / colCount;
+      const rowH = 18;
+      const padX = 5;
+      const padY = 4;
+      for (let ri = 0; ri < allRows.length; ri++) {
+        if (cursorY - rowH <= marginBottom) addPage();
+        const rowY = cursorY - rowH;
+        const isHeader = block.headers.length && ri === 0;
+        if (isHeader) {
+          page.drawRectangle({ x: marginX, y: rowY, width: maxWidth, height: rowH, color: rgb(0.1, 0.23, 0.42) });
+        } else if (ri % 2 === 0) {
+          page.drawRectangle({ x: marginX, y: rowY, width: maxWidth, height: rowH, color: rgb(0.96, 0.96, 0.98) });
+        }
+        // Horizontal lines
+        page.drawLine({ start: { x: marginX, y: cursorY }, end: { x: marginX + maxWidth, y: cursorY }, thickness: 0.5, color: rgb(0.75, 0.75, 0.75) });
+        // Vertical lines
+        for (let ci = 0; ci <= colCount; ci++) {
+          page.drawLine({ start: { x: marginX + ci * colWidth, y: cursorY }, end: { x: marginX + ci * colWidth, y: rowY }, thickness: 0.5, color: rgb(0.75, 0.75, 0.75) });
+        }
+        const cells = allRows[ri];
+        const textColor = isHeader ? rgb(1, 1, 1) : rgb(0.12, 0.12, 0.14);
+        const f = isHeader ? boldFont : font;
+        for (let ci = 0; ci < colCount; ci++) {
+          let cellText = stripInlineMd(cells[ci] || '');
+          const cellX = marginX + ci * colWidth + padX;
+          const maxCellW = colWidth - padX * 2;
+          while (cellText.length > 1 && f.widthOfTextAtSize(cellText, 9) > maxCellW) {
+            cellText = cellText.slice(0, -1);
+          }
+          page.drawText(cellText, { x: cellX, y: rowY + padY, size: 9, font: f, color: textColor });
+        }
+        cursorY = rowY;
+      }
+      // Bottom border of table
+      page.drawLine({ start: { x: marginX, y: cursorY }, end: { x: marginX + maxWidth, y: cursorY }, thickness: 0.5, color: rgb(0.75, 0.75, 0.75) });
       cursorY -= 10;
     }
   }
