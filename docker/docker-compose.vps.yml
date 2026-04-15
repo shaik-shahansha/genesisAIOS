@@ -17,10 +17,6 @@ services:
   # Stub — replaced by host Ollama on :11434, daemon points there via extra_hosts
   ollama:
     image: alpine
-    deploy:
-      resources:
-        reservations:
-          devices: []
     entrypoint: ["sh", "-c", "while true; do sleep 3600; done"]
     healthcheck:
       test: ["CMD", "true"]
