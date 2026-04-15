@@ -42,14 +42,14 @@ services:
       start_period: 1s
 
   daemon:
-    ports:
-      # Bind to localhost only — Nginx proxies genesisos.genesisagi.in → :3001
-      - "127.0.0.1:3001:3000"
-    extra_hosts:
-      # Allows daemon container to reach host's Ollama on 127.0.0.1:11434
-      - "host.docker.internal:host-gateway"
+    # Host networking: daemon runs directly on the host network stack so it can
+    # reach 127.0.0.1:11434 (Ollama bound to loopback on the host).
+    # With host network, port mapping syntax is not used — GENESIS_PORT controls
+    # which host port the daemon listens on directly.
+    network_mode: "host"
     environment:
-      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_BASE_URL=http://127.0.0.1:11434
+      - GENESIS_PORT=3001
       - GENESIS_VOICE_ENABLED=false
       - GENESIS_ALLOW_INSECURE_TLS=false
       - OLLAMA_NUM_GPU=0

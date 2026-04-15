@@ -649,7 +649,7 @@ export default function ChatPanel({ onClose, onStateChange }) {
             { id: Date.now() + 1, role: 'assistant', content: `Model switched to **\`${modelName}\`**. Takes effect on next message.` },
           ]);
         } else {
-          const current = localStorage.getItem('genesis_model') || (process.env.GENESIS_MODEL || 'gemma4:e4b');
+          const current = localStorage.getItem('genesis_model') || 'default';
           setMessages(prev => [...prev,
             { id: Date.now(), role: 'user', content: text },
             { id: Date.now() + 1, role: 'assistant', content: `Current model: **\`${current}\`**\nUsage: \`/model <model-name>\`` },

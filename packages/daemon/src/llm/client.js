@@ -1,7 +1,7 @@
 'use strict';
 
 const OLLAMA_BASE = process.env.OLLAMA_BASE_URL || 'http://ollama:11434';
-const DEFAULT_MODEL = process.env.GENESIS_MODEL || 'gemma4:e4b';
+const DEFAULT_MODEL = process.env.GENESIS_MODEL || 'qwen3:1.7b';
 
 let _addLog;
 function getLogger() {

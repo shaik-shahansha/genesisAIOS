@@ -168,7 +168,7 @@ export default function App() {
   return (
     <OSContext.Provider value={osCtx}>
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-      {authState.checked && authState.passwordSet && !authState.authenticated && (
+      {authState.checked && authState.passwordSet && !authState.authenticated && !demoMode && (
         <LockScreen onAuthenticated={refreshAuth} />
       )}
       <div

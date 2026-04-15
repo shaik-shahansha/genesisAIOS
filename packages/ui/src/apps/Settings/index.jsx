@@ -333,7 +333,7 @@ export default function Settings() {
         {/* AI Model */}
         <Section title="AI Model">
           <p className="text-white/50 text-xs mb-3">
-            Default: <code className="text-accent">gemma4:e4b</code> (CPU-optimised, recommended)
+            Active model is set via <code className="text-accent">GENESIS_MODEL</code> on the server.
           </p>
           {models.length > 0 ? (
             <select

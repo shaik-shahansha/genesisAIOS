@@ -1647,6 +1647,9 @@ router.post('/transcribe', async (req, res) => {
 
 // GET /api/ai/voice-status
 router.get('/voice-status', async (_req, res) => {
+  if (process.env.GENESIS_VOICE_ENABLED === 'false') {
+    return res.status(200).json({ ok: false, whisper: false, tts: false, error: 'Voice disabled on this instance' });
+  }
   const status = await fetchVoiceHealth(process.env.VOICE_SERVICE_URL);
   res.status(status.ok ? 200 : 503).json(status);
 });
@@ -1921,7 +1924,7 @@ module.exports = router;
 // Returns current model, message count, fallback chain, and identity file status.
 router.get('/status', (req, res) => {
   const modelRes = getLastUsedModel();
-  const primaryModel = process.env.GENESIS_MODEL || 'gemma4:e4b';
+  const primaryModel = process.env.GENESIS_MODEL || 'qwen3:1.7b';
   const fallbackRaw = process.env.GENESIS_MODEL_FALLBACK || '';
   const fallbackChain = fallbackRaw ? fallbackRaw.split(',').map(m => m.trim()).filter(Boolean) : [];
   const msgCount = db.prepare('SELECT COUNT(*) as count FROM messages').get().count;
