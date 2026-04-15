@@ -1040,7 +1040,10 @@ export default function ChatPanel({ onClose, onStateChange }) {
       </div>
 
       {/* Messages */}
-      <div className={`flex-1 min-h-0 overflow-y-auto py-3 flex flex-col gap-3 ${maximized ? 'px-6 max-w-3xl w-full self-center' : 'px-4'}`}>
+      <div
+        className={`flex-1 min-h-0 overflow-y-auto py-3 flex flex-col gap-3 ${maximized ? 'px-6 max-w-3xl w-full self-center' : 'px-4'}`}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         {(voiceError || (!voiceStatus.whisper && voiceStatus.error)) && (
           <div className="text-[11px] text-orange-300 border border-orange-400/20 bg-orange-400/10 rounded-xl px-3 py-2">
             {voiceError || voiceStatus.error}
@@ -1204,7 +1207,7 @@ function Bubble({ msg, onOpenImagePreview }) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] px-3 py-2 rounded-xl text-sm leading-relaxed whitespace-pre-wrap ${
+        className={`max-w-[85%] px-3 py-2 rounded-xl text-sm leading-relaxed whitespace-pre-wrap select-text cursor-text ${
           isUser
             ? 'text-white rounded-br-sm'
             : 'text-white/90 glass rounded-bl-sm'

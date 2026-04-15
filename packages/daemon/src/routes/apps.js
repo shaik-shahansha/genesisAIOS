@@ -49,4 +49,19 @@ router.delete('/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /api/apps/shortcut  { filePath, name }  — create a desktop shortcut (mini app that opens the file)
+router.post('/shortcut', async (req, res) => {
+  const { filePath, name } = req.body;
+  if (!filePath || !name) return res.status(400).json({ error: 'filePath and name required' });
+  const { v4: shortId } = require('uuid');
+  const ext = filePath.split('.').pop().toLowerCase();
+  const appMap = { pdf: 'pdf', docx: 'office', xlsx: 'office', pptx: 'office', doc: 'office', md: 'editor', txt: 'editor', js: 'editor', ts: 'editor', py: 'editor', html: 'editor' };
+  const appId = appMap[ext] || 'editor';
+  const icon = { pdf: '📄', docx: '📝', xlsx: '📊', pptx: '📊', png: '🖼️', jpg: '🖼️', mp4: '🎬' }[ext] || '📂';
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${name}</title></head><body style="margin:0;background:#1a1625;display:flex;align-items:center;justify-content:center;height:100vh;color:white;font-family:sans-serif;"><script>window.parent.postMessage({type:'genesis_open_app',appId:'${appId}',props:{filePath:'${filePath}'}}, '*');<\/script><p>Opening ${name}\u2026</p></body></html>`;
+  const id = uuidv4();
+  db.prepare('INSERT INTO created_apps (id, name, description, icon, html_content) VALUES (?, ?, ?, ?, ?)').run(id, name, `Shortcut to ${filePath}`, icon, html);
+  res.json({ ok: true, id, icon });
+});
+
 module.exports = router;

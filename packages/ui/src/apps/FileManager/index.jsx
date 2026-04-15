@@ -317,26 +317,100 @@ export default function FileManager({ winId }) {
       {/* Status bar */}
       {selected && (
         <div className="px-3 py-2 border-t border-white/8 text-white/40 text-xs flex items-center gap-3">
-          <span>{getIcon(selected)} {selected.name}</span>
-          {selected.type === 'file' && <span>{formatSize(selected.size)}</span>}
-          <div className="ml-auto flex items-center gap-2">
-            {selected.type === 'file' && (
-              <button
-                onClick={() => handleDownload(selected)}
-                title="Download to your PC"
-                className="flex items-center gap-1 text-white/50 hover:text-sky-400 transition-colors"
-              >
-                <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10 4v10M6 10l4 4 4-4"/>
-                  <path d="M3 16h14"/>
-                </svg>
-                Download
-              </button>
-            )}
-            <button onClick={() => handleOpen(selected)} className="text-accent hover:text-accent-light transition-colors">
-              Open →
-            </button>
-          </div>
+          {/* Inline rename input */}
+          {pendingAction === 'rename' ? (
+            <form
+              className="flex items-center gap-2 flex-1"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const newName = entryName.trim();
+                if (!newName || newName === selected.name) { setPendingAction(null); return; }
+                try {
+                  const r = await fetch('/api/fs/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ oldPath: selected.path, newName }) });
+                  const d = await r.json();
+                  if (!r.ok) throw new Error(d.error);
+                  await load(cwd);
+                  setSelected(null);
+                } catch (err) {
+                  alert(err.message);
+                } finally {
+                  setPendingAction(null);
+                }
+              }}
+            >
+              <span className="text-white/50">Rename to:</span>
+              <input
+                autoFocus
+                value={entryName}
+                onChange={(e) => setEntryName(e.target.value)}
+                className="flex-1 bg-white/8 rounded px-2 py-0.5 text-white/80 outline-none border border-white/15 focus:border-indigo-400/60 text-xs"
+              />
+              <button type="submit" className="text-indigo-300 hover:text-indigo-200 transition-colors">OK</button>
+              <button type="button" onClick={() => setPendingAction(null)} className="text-white/30 hover:text-white/60 transition-colors">Cancel</button>
+            </form>
+          ) : (
+            <>
+              <span>{getIcon(selected)} {selected.name}</span>
+              {selected.type === 'file' && <span>{formatSize(selected.size)}</span>}
+              <div className="ml-auto flex items-center gap-2">
+                {/* Rename */}
+                <button
+                  onClick={() => { setEntryName(selected.name); setPendingAction('rename'); }}
+                  title="Rename"
+                  className="flex items-center gap-1 text-white/50 hover:text-amber-300 transition-colors"
+                >
+                  <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 16h3l7-7-3-3-7 7v3zM14.5 4.5l1 1a1 1 0 0 1 0 1.4l-1 1-2.4-2.4 1-1a1 1 0 0 1 1.4 0z"/>
+                  </svg>
+                  Rename
+                </button>
+                {/* Pin to Desktop */}
+                {selected.type === 'file' && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const nameNoExt = selected.name.replace(/\.[^.]+$/, '');
+                        const r = await fetch('/api/apps/shortcut', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filePath: selected.path, name: nameNoExt }) });
+                        const d = await r.json();
+                        if (!r.ok) throw new Error(d.error);
+                        window._genesisRefreshApps?.();
+                        alert(`"${nameNoExt}" pinned to desktop!`);
+                      } catch (err) {
+                        alert(err.message);
+                      }
+                    }}
+                    title="Add shortcut to desktop"
+                    className="flex items-center gap-1 text-white/50 hover:text-emerald-300 transition-colors"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="2" width="7" height="7" rx="1.5"/>
+                      <rect x="11" y="2" width="7" height="7" rx="1.5"/>
+                      <rect x="2" y="11" width="7" height="7" rx="1.5"/>
+                      <path d="M14.5 11v6M11.5 14h6"/>
+                    </svg>
+                    Pin to Desktop
+                  </button>
+                )}
+                {/* Download */}
+                {selected.type === 'file' && (
+                  <button
+                    onClick={() => handleDownload(selected)}
+                    title="Download to your PC"
+                    className="flex items-center gap-1 text-white/50 hover:text-sky-400 transition-colors"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 4v10M6 10l4 4 4-4"/>
+                      <path d="M3 16h14"/>
+                    </svg>
+                    Download
+                  </button>
+                )}
+                <button onClick={() => handleOpen(selected)} className="text-accent hover:text-accent-light transition-colors">
+                  Open →
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -133,9 +133,9 @@ export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }
                   <path d="M2.5 10h15M10 2.5c-2 2-3 4.5-3 7.5s1 5.5 3 7.5M10 2.5c2 2 3 4.5 3 7.5s-1 5.5-3 7.5" />
                 </svg>
               </div>
-              <p className="text-sm">Browse the web or search with DuckDuckGo</p>
+              <p className="text-sm">Browse the web</p>
               <div className="flex flex-col gap-2 w-56">
-                {['https://duckduckgo.com', 'https://wikipedia.org', 'https://news.ycombinator.com'].map((u) => (
+                {['https://genesisagi.in', 'https://wikipedia.org', 'https://news.ycombinator.com'].map((u) => (
                   <button
                     key={u}
                     onClick={() => navigate(u)}

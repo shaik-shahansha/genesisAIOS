@@ -177,4 +177,24 @@ router.put('/office', async (req, res) => {
   }
 });
 
+// POST /api/fs/rename  { oldPath, newName }  — rename file/folder within same directory
+router.post('/rename', async (req, res) => {
+  try {
+    await ensureWorkspaceStructure();
+    const { oldPath, newName } = req.body;
+    if (!oldPath || !newName) return res.status(400).json({ error: 'oldPath and newName required' });
+    if (newName.includes('/') || newName.includes('\\') || newName === '..' || newName === '.')
+      return res.status(400).json({ error: 'newName must be a plain filename with no path separators' });
+    const src = safePath(oldPath);
+    const dest = path.join(path.dirname(src), newName);
+    // dest must still be inside ROOT
+    const rel = path.relative(ROOT, dest);
+    if (rel.startsWith('..')) return res.status(400).json({ error: 'Destination is outside workspace' });
+    await fs.rename(src, dest);
+    res.json({ ok: true, newPath: rel.replace(/\\/g, '/') });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 module.exports = router;

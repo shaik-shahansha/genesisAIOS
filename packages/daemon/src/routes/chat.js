@@ -91,6 +91,12 @@ You have a \`bash\` tool that gives you the full power of the Linux container:
 5. **Never say "Done."** alone — always say what actually happened or show the result.
 6. **For knowledge/conversation** — answer directly without tools. You know a lot.
 
+## Critical rules — NEVER violate these
+
+- **NEVER ask the user to provide content for a document.** When asked to create any document, article, report, essay, CV, guide, or any written content — ALWAYS generate the full content yourself immediately. Use your own knowledge. Do not ask "What should I include?" or "Can you provide the content?" — just write it.
+- **NEVER ask "what format?" if PDF is a reasonable default.** Default to .pdf unless the user specifies otherwise.
+- When the user says "open terminal", "open browser", "open file manager", "open files", "open settings" etc. — ALWAYS call \`open_app\` immediately with the matching appId. Do not respond with text alone.
+
 ## Key paths
 - User workspace: /workspace (all user files)
 - Working directory persists between bash calls (cd is sticky)
@@ -192,12 +198,12 @@ const TOOL_DEFS = [
     type: 'function',
     function: {
       name: 'create_document',
-      description: 'Create a document file in .docx, .xlsx, .pptx, or .pdf format. ALWAYS include a path with the correct extension, e.g. "Documents/report.pdf". Default to .pdf when the user does not specify a format.',
+      description: 'Create a document file in .docx, .xlsx, .pptx, or .pdf format. ALWAYS include a path with the correct extension, e.g. "Documents/report.pdf". Default to .pdf when the user does not specify a format. ALWAYS generate the full content yourself — NEVER ask the user to provide content.',
       parameters: {
         type: 'object',
         properties: {
           path: { type: 'string', description: 'Output path including file extension, e.g. Documents/report.pdf or Documents/budget.xlsx. REQUIRED — always provide this.' },
-          content: { type: 'string', description: 'Full document content (markdown text for docx/pdf, CSV rows for xlsx).' },
+          content: { type: 'string', description: 'Full document content you generate yourself (markdown text for docx/pdf, CSV rows for xlsx). NEVER leave empty — always write comprehensive content.' },
         },
         required: ['path', 'content'],
       },
@@ -344,9 +350,9 @@ const TOOL_DEFS = [
           name: { type: 'string', description: 'Short display name for the app (e.g. "Todo List").' },
           description: { type: 'string', description: 'One-sentence description of what the app does.' },
           icon: { type: 'string', description: 'A single emoji for the app icon.' },
-          html_content: { type: 'string', description: 'Complete self-contained HTML with embedded CSS and JS using IndexedDB. Must be a fully functional single-page HTML app. Include dark theme styling matching genesis OS.' },
+          html_content: { type: 'string', description: 'Complete self-contained HTML with embedded CSS and JS using IndexedDB. Must be a fully functional single-page HTML app. Include dark theme styling matching genesis OS. Omit this field to have it auto-generated.' },
         },
-        required: ['name', 'icon', 'html_content'],
+        required: ['name', 'icon'],
       },
     },
   },
@@ -738,9 +744,16 @@ async function toolCreateDocument({ path: rel, content, filename, format }, opti
   if (!resolvedRel || !path.extname(resolvedRel)) {
     // Try to extract a title from the first markdown heading in content
     const headingMatch = (content || '').match(/^#+\s+(.+)/m);
-    const titleSlug = headingMatch
-      ? headingMatch[1].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50)
-      : 'document';
+    let titleSlug;
+    if (headingMatch) {
+      titleSlug = headingMatch[1].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50);
+    } else if (resolvedRel) {
+      // Use whatever partial name was given (e.g. just 'report') as the slug
+      titleSlug = path.basename(resolvedRel, path.extname(resolvedRel))
+        .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 50) || 'document';
+    } else {
+      titleSlug = 'document';
+    }
     const ext = format || (resolvedRel && path.extname(resolvedRel).slice(1)) || 'pdf';
     resolvedRel = `Documents/${titleSlug}.${ext}`;
   }
@@ -1036,10 +1049,40 @@ async function toolGenerateImage({ prompt }) {
   };
 }
 
-async function toolCreateApp({ name, description, icon, html_content }) {
+async function toolCreateApp({ name, description, icon, html_content }, options = {}) {
+  const { addLog } = require('../logger');
+  const { onEvent } = options;
   const { v4: appUuid } = require('uuid');
   const db2 = require('../db');
   const id = appUuid();
+
+  // If the LLM didn't provide HTML, generate it here with a focused no-timeout call
+  if (!html_content) {
+    const preMsg = `Building **${name}** ${icon || '🧩'}\u2026 This may take 1\u20133 minutes on CPU. Hang tight!\n\n`;
+    for (const char of preMsg) onEvent?.({ token: char });
+    addLog('info', `[create_app] auto-generating HTML for "${name}"`);
+    const htmlPrompt = [
+      {
+        role: 'system',
+        content: 'You are an expert front-end developer. Output ONLY raw HTML \u2014 no markdown fences, no explanation. The app must be fully self-contained (inline CSS + JS), use IndexedDB for persistence, and use a dark glassmorphism theme with accent colour #7C3AED.',
+      },
+      {
+        role: 'user',
+        content: `Build a complete "${name}" app${description ? ` \u2014 ${description}` : ''}. Output ONLY raw HTML starting with <!DOCTYPE html> and ending with </html>. No markdown.`,
+      },
+    ];
+    try {
+      const msg = await chat(htmlPrompt, { model: undefined, signal: null });
+      html_content = (msg.content || '').trim()
+        .replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+    } catch (err) {
+      addLog('warn', `[create_app] HTML generation failed: ${err.message}`);
+      throw new Error(`App HTML generation failed: ${err.message}`);
+    }
+    if (!html_content.toLowerCase().includes('<html')) {
+      throw new Error('Model did not return valid HTML for the app. Please try again.');
+    }
+  }
 
   await ensureWorkspaceStructure();
   const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
@@ -1134,54 +1177,88 @@ async function runTool(name, args, options = {}) {
     }
     case 'generate_image': return toolGenerateImage(args || {}, options);
     case 'create_app': return toolCreateApp(args || {}, options);
-    // Aliases for common model hallucinations — normalize arg names and delegate
+    // Aliases for hallucinated tool names — normalize args and let toolCreateApp handle HTML generation
     case 'create_mini_app_shell':
     case 'create_mini_app':
     case 'build_app':
-    case 'make_app': {
-      const normalized = {
+    case 'make_app':
+      return toolCreateApp({
         name: args?.name || args?.app_name || args?.appName || 'App',
         description: args?.description,
         icon: args?.icon,
         html_content: args?.html_content || args?.htmlContent || args?.html,
-      };
-      if (!normalized.html_content) {
-        // Generate HTML via LLM since the model didn't provide it
-        const appName = normalized.name;
-        const htmlPrompt = [
-          {
-            role: 'system',
-            content:
-              'You are an expert front-end developer. Output ONLY the complete raw HTML — no explanations, no markdown fences. The HTML must be fully self-contained (inline CSS and JS) and use IndexedDB for persistence. Use a dark glassmorphism theme with accent #7C3AED.',
-          },
-          {
-            role: 'user',
-            content: `Build a complete "${appName}" app (${normalized.description || appName}). Output ONLY raw HTML starting with <!DOCTYPE html>. No markdown.`,
-          },
-        ];
-        let html = '';
-        try {
-          const msg = await chat(htmlPrompt, { model: undefined });
-          html = (msg.content || '').trim()
-            .replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-        } catch { /* fall through */ }
-        if (!html.toLowerCase().includes('<html')) {
-          throw new Error(`App creation failed: could not generate HTML for "${appName}"`);
-        }
-        normalized.html_content = html;
-      }
-      return toolCreateApp(normalized, options);
-    }
+      }, options);
     default: throw new Error(`Unknown tool: ${name}`);
   }
 }
 
+// Handle direct "open X" commands without going through the LLM.
+// Returns { content, actions } if handled, or null to fall through to runAgent.
 async function tryHandleDirectAction(message, onEvent) {
   const text = String(message || '').trim();
   const lower = text.toLowerCase();
-  const emit = (action) => onEvent?.({ action });
 
-  const openBrowserMatch = text.match(/\b(?:open|launch)\s+(?:the\s+)?browser(?:\s+(?:and\s+)?(?:open|go to)\s+(.+))?$/i);
+  function emit(action) {
+    onEvent?.({ action });
+  }
+
+  // "open browser [url]"
+  const openBrowserMatch = lower.match(/\b(?:open|launch)\s+(?:the\s+)?(?:browser|ai\s+browser)\b(?:\s+(?:and\s+)?(?:go\s+to|navigate\s+to|open|visit)?\s*(https?:\/\/\S+|www\.\S+|[a-z0-9.-]+\.[a-z]{2,}\S*))?/i)
+    || text.match(/\b(?:go\s+to|navigate\s+to|visit)\s+(https?:\/\/\S+|www\.\S+|[a-z0-9.-]+\.[a-z]{2,}\S*)/i);
+  if (openBrowserMatch) {
+    const rawUrl = (openBrowserMatch[1] || '').trim();
+    const normalizedUrl = rawUrl
+      ? (/^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`)
+      : undefined;
+    const action = { type: 'open_app', appId: 'browser', props: normalizedUrl ? { initialUrl: normalizedUrl } : {} };
+    emit(action);
+    return {
+      content: normalizedUrl ? `Opened Browser and navigated to ${normalizedUrl}.` : 'Opened Browser.',
+      actions: [action],
+    };
+  }
+
+  // "open <appName>" quick commands
+  const openAppMap = [
+    [/\b(?:open|launch|show)\s+(?:the\s+)?(?:file\s+manager|files|file\s+explorer)\b/i, 'files', 'File Manager'],
+    [/\b(?:open|launch|show)\s+(?:the\s+)?(?:terminal|console|shell|command\s+line)\b/i, 'terminal', 'Terminal'],
+    [/\b(?:open|launch|show)\s+(?:the\s+)?settings\b/i, 'settings', 'Settings'],
+    [/\b(?:open|launch|show)\s+(?:the\s+)?(?:text\s+)?editor\b/i, 'editor', 'Editor'],
+    [/\b(?:open|launch|show)\s+(?:the\s+)?(?:pdf\s+viewer|pdf)\b/i, 'pdf', 'PDF Viewer'],
+    [/\b(?:open|launch|show)\s+(?:the\s+)?(?:office\s+viewer|office)\b/i, 'office', 'Office Viewer'],
+    [/\b(?:open|launch|show)\s+(?:the\s+)?(?:logs?|system\s+logs?)\b/i, 'logs', 'Logs'],
+    [/\b(?:open|launch|show)\s+(?:the\s+)?(?:app\s*builder|appbuilder)\b/i, 'appbuilder', 'App Builder'],
+  ];
+  for (const [re, appId, label] of openAppMap) {
+    if (re.test(lower)) {
+      const action = { type: 'open_app', appId, props: {} };
+      emit(action);
+      return { content: `Opened ${label}.`, actions: [action] };
+    }
+  }
+
+  return null;
+}
+
+// Trim a conversation to keep it within a manageable size for the LLM.
+// Always preserves the system message and the most recent N messages.
+function trimConversation(conv, maxNonSystem = 18) {
+  const system = conv.find((m) => m.role === 'system');
+  const rest = conv.filter((m) => m.role !== 'system');
+  if (rest.length <= maxNonSystem) return conv;
+  const trimmed = rest.slice(-maxNonSystem);
+  // Ensure first non-system message is from user (not orphaned tool/assistant)
+  const firstUserIdx = trimmed.findIndex((m) => m.role === 'user');
+  const safeRest = firstUserIdx > 0 ? trimmed.slice(firstUserIdx) : trimmed;
+  return system ? [system, ...safeRest] : safeRest;
+}
+
+async function runAgent(messages, { model, onEvent, signal }) {
+  const { addLog } = require('../logger');
+  const conversation = trimConversation([...messages]);
+  const actions = [];
+  // Extract the last user message for re-prompt fallback
+  const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
   if (openBrowserMatch) {
     const rawUrl = (openBrowserMatch[1] || '').trim();
     const normalizedUrl = rawUrl
@@ -1507,11 +1584,25 @@ async function runAgent(messages, { model, onEvent, signal }) {
         const hasTextExt = /\.(html?|md|markdown|txt)$/i.test(requestedPath);
 
         if (toolCall.function.name === 'write_file' || !hasRequestedExt) {
-          const normalizedPath = requestedPath
-            ? requestedPath.replace(/\.[^.\/]+$/, `.${requestedBinaryFormat}`)
-            : `Documents/generated-document.${requestedBinaryFormat}`;
+          let normalizedPath;
+          if (requestedPath) {
+            normalizedPath = requestedPath.replace(/\.[^.\/]+$/, `.${requestedBinaryFormat}`);
+          } else {
+            // Derive a meaningful filename from content title or last user message
+            const headingMatch = (args.content || '').match(/^#+\s+(.+)/m);
+            const titleSource = headingMatch?.[1] || lastUserMsg;
+            const titleSlug = titleSource
+              .replace(/^(?:create|make|generate|write|build)\s+(?:a|an|me|the)?\s*/i, '')
+              .replace(/\s+(?:document|report|file|guide|plan|brief|proposal|summary|analysis)$/i, '')
+              .trim()
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/^-|-$/g, '')
+              .slice(0, 50) || 'document';
+            normalizedPath = `Documents/${titleSlug}.${requestedBinaryFormat}`;
+          }
           toolCall.function.name = 'create_document';
-          args = { ...args, path: normalizedPath || `Documents/generated-document.${requestedBinaryFormat}` };
+          args = { ...args, path: normalizedPath };
         }
 
         if (hasTextExt) {
@@ -1530,7 +1621,7 @@ async function runAgent(messages, { model, onEvent, signal }) {
 
       let result;
       try {
-        result = await runTool(toolCall.function.name, args);
+        result = await runTool(toolCall.function.name, args, { onEvent });
         addLog('info', `[agent] tool ${toolCall.function.name} ✓`);
       } catch (err) {
         addLog('error', `[agent] tool ${toolCall.function.name} failed:`, err.message);
@@ -1891,52 +1982,49 @@ router.post('/chat', async (req, res) => {
   const requestAC = new AbortController();
   req.on('close', () => requestAC.abort());
 
+  const sseOnEvent = (event) => { res.write(`data: ${JSON.stringify(event)}\n\n`); };
+
   let full = '';
   try {
-    const directAction = await tryHandleDirectAction(message, (event) => {
-      res.write(`data: ${JSON.stringify(event)}\n\n`);
+    const agentT0 = Date.now();
+
+    // Fast path: intercept simple "open X" commands without calling the LLM
+    const directResult = await tryHandleDirectAction(message, sseOnEvent);
+    if (directResult) {
+      addLog('info', `[chat] direct action handled in ${Date.now() - agentT0}ms`);
+      full = directResult.content || '';
+      for (const char of full) res.write(`data: ${JSON.stringify({ token: char })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+      if (full) {
+        const aId = uuidv4();
+        db.prepare('INSERT INTO messages (id, role, content) VALUES (?, ?, ?)').run(aId, 'assistant', full);
+        memoryStore(aId, 'assistant', full);
+      }
+      return;
+    }
+
+    const agentMessages = [...messages, { role: 'user', content: message }];
+    const agentResult = await runAgent(agentMessages, {
+      model,
+      signal: requestAC.signal,
+      onEvent: sseOnEvent,
     });
+    addLog('info', `[chat] agent completed in ${Date.now() - agentT0}ms, length: ${agentResult.content?.length || 0}`);
 
-    if (directAction) {
-      full = directAction.content || '';
-      // Pre-message tokens (building notice) were already streamed via onEvent during
-      // tryHandleDirectAction. The final content (success/error) still needs streaming,
-      // but skip re-streaming if it matches the last thing already sent (create_app
-      // streams its own success via finalMessage through the action event).
-      if (!directAction._tokensAlreadyStreamed) {
-        for (const char of full) {
-          res.write(`data: ${JSON.stringify({ token: char })}\n\n`);
-        }
-      }
-    } else {
-      // Always run through the agent loop — Gemma 4 decides itself whether to call tools
-      // or just reply conversationally. With skipFinalLlm on all tools, this is exactly
-      // 1 LLM call for both pure conversation AND tool execution.
-      const agentT0 = Date.now();
-      const agentMessages = [...messages, { role: 'user', content: message }];
-      const agentResult = await runAgent(agentMessages, {
-        model,
-        signal: requestAC.signal,
-        onEvent: (event) => {
-          res.write(`data: ${JSON.stringify(event)}\n\n`);
-        },
-      });
-      addLog('info', `[chat] agent completed in ${Date.now() - agentT0}ms, length: ${agentResult.content?.length || 0}`);
+    // If the agent produced an approval_required action, skip streaming the text content —
+    // the ApprovalCard in the UI already shows the message from the action SSE event.
+    const hasApproval = agentResult.actions?.some((a) => a?.type === 'approval_required');
 
-      // If the agent produced an approval_required action, skip streaming the text content —
-      // the ApprovalCard in the UI already shows the message from the action SSE event.
-      const hasApproval = agentResult.actions?.some((a) => a?.type === 'approval_required');
+    if (requestAC.signal.aborted) {
+      // Client disconnected — don't stream or save
+      return;
+    }
 
-      if (requestAC.signal.aborted) {
-        // Client disconnected — don't stream or save
-        return;
-      }
+    full = hasApproval ? '' : (agentResult.content || '');
 
-      full = hasApproval ? '' : (agentResult.content || '');
-
-      for (const char of full) {
-        res.write(`data: ${JSON.stringify({ token: char })}\n\n`);
-      }
+    for (const char of full) {
+      res.write(`data: ${JSON.stringify({ token: char })}\n\n`);
     }
 
     if (!full && !requestAC.signal.aborted) {

@@ -458,8 +458,19 @@ async function createPdfBuffer(text) {
     out.push(cur); return out;
   };
 
+  // Replace characters outside WinAnsi (pdf-lib standard fonts only support WinAnsi)
+  const toWinAnsi = (str) => str
+    .replace(/[\u2018\u2019]/g, "'")   // smart single quotes → '
+    .replace(/[\u201C\u201D]/g, '"')   // smart double quotes → "
+    .replace(/\u2013/g, '-')           // en-dash → -
+    .replace(/\u2014/g, '--')          // em-dash → --
+    .replace(/\u2026/g, '...')         // ellipsis → ...
+    .replace(/\u2022/g, '*')           // bullet → *
+    .replace(/\u00A0/g, ' ')           // non-breaking space → space
+    .replace(/[^\x00-\xFF]/g, '');     // remove any remaining non-latin chars
+
   const drawText = (line, f, sz, color, indent = 0) => {
-    for (const w of wrapLine(line, f, sz)) {
+    for (const w of wrapLine(toWinAnsi(line), f, sz)) {
       if (cursorY <= marginBottom) addPage();
       page.drawText(w, { x: marginX + indent, y: cursorY, size: sz, font: f, color });
       cursorY -= sz * 1.4;
@@ -513,7 +524,7 @@ async function createPdfBuffer(text) {
         const textColor = isHeader ? rgb(1, 1, 1) : rgb(0.12, 0.12, 0.14);
         const f = isHeader ? boldFont : font;
         for (let ci = 0; ci < colCount; ci++) {
-          let cellText = stripInlineMd(cells[ci] || '');
+          let cellText = toWinAnsi(stripInlineMd(cells[ci] || ''));
           const cellX = marginX + ci * colWidth + padX;
           const maxCellW = colWidth - padX * 2;
           while (cellText.length > 1 && f.widthOfTextAtSize(cellText, 9) > maxCellW) {
