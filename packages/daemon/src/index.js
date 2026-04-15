@@ -69,7 +69,7 @@ async function start() {
     // Pre-load the LLM into Ollama memory so the first chat message is instant.
     (async () => {
       const OLLAMA_BASE = process.env.OLLAMA_BASE_URL || 'http://ollama:11434';
-      const model = process.env.GENESIS_MODEL || 'qwen3:1.7b';
+      const model = process.env.GENESIS_MODEL || 'gemma4:e4b';
       console.log(`[genesis] warming up model: ${model}`);
       try {
         const res = await fetch(`${OLLAMA_BASE}/api/generate`, {

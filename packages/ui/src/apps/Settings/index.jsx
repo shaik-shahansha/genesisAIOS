@@ -276,8 +276,11 @@ export default function Settings() {
       <div className="max-w-lg mx-auto flex flex-col gap-6">
         <h2 className="text-xl font-semibold text-white/90">Settings</h2>
 
-        {!demoMode && <Section title="Security">
-          <div className="flex flex-col gap-3">
+        <Section title="Security">
+          {demoMode !== false ? (
+            <p className="text-white/40 text-sm">{demoMode === null ? '…' : 'Security settings are disabled in demo mode.'}</p>
+          ) : (
+            <div className="flex flex-col gap-3">
               <p className="text-white/65 text-sm">
                 {authState?.passwordSet
                   ? 'Genesis OS is protected with a local password and session cookie.'
@@ -324,12 +327,13 @@ export default function Settings() {
                 )}
               </div>
             </div>
-        </Section>}
+          )}
+        </Section>
 
         {/* AI Model */}
         <Section title="AI Model">
           <p className="text-white/50 text-xs mb-3">
-            Active model is set via <code className="text-accent">GENESIS_MODEL</code> on the server.
+            Default: <code className="text-accent">gemma4:e4b</code> (CPU-optimised, recommended)
           </p>
           {models.length > 0 ? (
             <select
@@ -349,7 +353,8 @@ export default function Settings() {
         </Section>
 
         {/* Download Models */}
-        {!demoMode && <Section title="Download Models">
+        {demoMode === false && (
+        <Section title="Download Models">
           <p className="text-white/45 text-xs mb-3">One-click download via Ollama. Large files — use on a good connection.</p>
           <div className="flex flex-col gap-2.5">
             {FEATURED_MODELS.map((fm) => {
@@ -411,7 +416,8 @@ export default function Settings() {
               );
             })}
           </div>
-        </Section>}
+        </Section>
+        )}
 
         {/* Accent color */}
         <Section title="Accent Colour">

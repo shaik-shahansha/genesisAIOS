@@ -4,6 +4,7 @@ setlocal EnableExtensions EnableDelayedExpansion
 cd /d "%~dp0"
 
 set "COMPOSE_FILE=docker\docker-compose.yml"
+set "COMPOSE_OVERRIDE=docker\docker-compose.override.yml"
 set "APP_URL=http://localhost:3000"
 set "DOCKER_EXE="
 set "DOCKER_DIR="
@@ -43,7 +44,7 @@ if "%RUNNING%"=="1" (
     echo.
     if errorlevel 2 goto open_existing
     echo Restarting Genesis OS...
-    "%DOCKER_EXE%" compose -f "%COMPOSE_FILE%" down
+    "%DOCKER_EXE%" compose -f "%COMPOSE_FILE%" -f "%COMPOSE_OVERRIDE%" down
     if errorlevel 1 (
         echo Failed to stop the current Genesis OS session.
         pause
@@ -54,7 +55,7 @@ if "%RUNNING%"=="1" (
 echo Starting Genesis OS...
 REM Build only if images are missing; skip rebuild if already built to keep startup fast.
 REM To apply source code changes, run: docker compose -f docker/docker-compose.yml build
-"%DOCKER_EXE%" compose -f "%COMPOSE_FILE%" up --build -d
+"%DOCKER_EXE%" compose -f "%COMPOSE_FILE%" -f "%COMPOSE_OVERRIDE%" up --build -d
 if errorlevel 1 (
     echo Failed to start Genesis OS.
     pause

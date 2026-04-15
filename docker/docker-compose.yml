@@ -58,7 +58,7 @@ services:
       - GENESIS_ALLOW_INSECURE_TLS=${GENESIS_ALLOW_INSECURE_TLS:-true}
       - GENESIS_APPROVAL_MODE=${GENESIS_APPROVAL_MODE:-true}
       - GENESIS_VOICE_ENABLED=${GENESIS_VOICE_ENABLED:-true}
-      - DEMO_MODE=${DEMO_MODE:-false}
+      - DEMO_MODE=true
       - MEMORY_SERVICE_URL=http://memory:7701
       - VOICE_SERVICE_URL=http://voice:7702
       - NODE_ENV=production

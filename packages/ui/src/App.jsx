@@ -24,7 +24,7 @@ export default function App() {
   const [orbState, setOrbState] = useState('idle'); // idle | listening | thinking | speaking
   const [splashDone, setSplashDone] = useState(false);
   const [authState, setAuthState] = useState({ checked: false, passwordSet: false, authenticated: true });
-  const [demoMode, setDemoMode] = useState(false);
+  const [demoMode, setDemoMode] = useState(null); // null = loading, true/false once /api/config resolves
   const [desktopFullscreen, setDesktopFullscreen] = useState(Boolean(document.fullscreenElement));
   // Created mini-apps loaded from API for Desktop tiles
   const [userApps, setUserApps] = useState([]);
@@ -76,7 +76,7 @@ export default function App() {
     fetch('/api/config')
       .then((r) => r.json())
       .then((d) => setDemoMode(!!d.demoMode))
-      .catch(() => {});
+      .catch(() => { setDemoMode(false); });
   }, [refreshAuth]);
 
   const openApp = useCallback((appId, props = {}) => {
@@ -168,7 +168,7 @@ export default function App() {
   return (
     <OSContext.Provider value={osCtx}>
       {!splashDone && <SplashScreen onDone={() => setSplashDone(true)} />}
-      {authState.checked && authState.passwordSet && !authState.authenticated && !demoMode && (
+      {authState.checked && authState.passwordSet && !authState.authenticated && (
         <LockScreen onAuthenticated={refreshAuth} />
       )}
       <div

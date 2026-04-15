@@ -207,7 +207,7 @@ export default function FileManager({ winId }) {
         <button onClick={() => { setPendingAction('folder'); setEntryName(''); }} className="text-white/60 hover:text-white text-xs px-2 py-1 rounded-md hover:bg-white/6">New Folder</button>
 
         {/* Upload */}
-        {!demoMode && (
+        {demoMode === false && (
           <>
             <button
               onClick={() => uploadInputRef.current?.click()}
