@@ -48,8 +48,8 @@ services:
       - genesis_data:/data
       - ${GENESIS_WORKSPACE:-./workspace}:/workspace
     environment:
-      - GENESIS_MODEL=${GENESIS_MODEL:-gemma4:e4b}
-      - GENESIS_MODEL_FALLBACK=${GENESIS_MODEL_FALLBACK:-gemma4:e2b,llama3.2:3b}
+      - GENESIS_MODEL=${GENESIS_MODEL:-qwen3:1.7b}
+      - GENESIS_MODEL_FALLBACK=${GENESIS_MODEL_FALLBACK:-qwen2.5:1.5b,qwen2.5:0.5b}
       - OLLAMA_BASE_URL=http://ollama:11434
       - GENESIS_PORT=3000
       - GENESIS_DATA_DIR=/data
@@ -57,7 +57,8 @@ services:
       - GENESIS_USER_NAME=${GENESIS_USER_NAME:-User}
       - GENESIS_ALLOW_INSECURE_TLS=${GENESIS_ALLOW_INSECURE_TLS:-true}
       - GENESIS_APPROVAL_MODE=${GENESIS_APPROVAL_MODE:-true}
-      - GENESIS_VOICE_ENABLED=true
+      - GENESIS_VOICE_ENABLED=${GENESIS_VOICE_ENABLED:-true}
+      - DEMO_MODE=${DEMO_MODE:-false}
       - MEMORY_SERVICE_URL=http://memory:7701
       - VOICE_SERVICE_URL=http://voice:7702
       - NODE_ENV=production

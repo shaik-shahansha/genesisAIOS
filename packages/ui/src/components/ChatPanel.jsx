@@ -98,6 +98,19 @@ export default function ChatPanel({ onClose, onStateChange }) {
         }
       })
       .catch(() => {});
+
+    // Clear stale cached model from localStorage if it no longer exists in Ollama
+    fetch('/api/ai/models')
+      .then((r) => r.json())
+      .then((d) => {
+        const available = d.models || [];
+        const cached = localStorage.getItem('genesis_model');
+        if (cached && available.length > 0 && !available.includes(cached)) {
+          localStorage.removeItem('genesis_model');
+        }
+      })
+      .catch(() => {});
+
     const timer = setTimeout(() => inputRef.current?.focus(), 120);
 
     return () => {
