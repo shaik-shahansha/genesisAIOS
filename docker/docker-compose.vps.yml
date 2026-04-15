@@ -7,29 +7,34 @@
 #                  up -d
 #
 # What this does:
-#   - Keeps Ollama inside Docker but does NOT expose port 11434 to the host
-#     (avoids conflict with the host's own Ollama process)
-#   - Mounts the host's Ollama model cache (/root/.ollama) so models already
-#     downloaded on the host are immediately available — no re-download needed
+#   - Skips the Ollama and model-init containers entirely (saves 3.7 GB image
+#     pull + model download — host already runs Ollama on :11434)
+#   - Points the daemon at the HOST's Ollama via host.docker.internal
 #   - Binds the Genesis daemon to 127.0.0.1:3001 (localhost only, Nginx proxies it)
 
 services:
 
+  # Disable — host already runs Ollama natively on :11434
   ollama:
-    # Strip GPU reservation (already done by docker-compose.override.yml,
-    # kept here for safety in case override is not passed)
-    deploy: {}
-    # Do NOT expose 11434 to the host — host already has Ollama on that port
-    ports: []
-    # Reuse models already downloaded by the host Ollama — saves disk & time
-    volumes:
-      - /root/.ollama:/root/.ollama
+    profiles: ["disabled"]
+
+  # Disable — no need to pull a model, host Ollama already has it
+  model-init:
+    profiles: ["disabled"]
+
+  # Disable — voice not needed on VPS
+  voice:
+    profiles: ["disabled"]
 
   daemon:
     ports:
       # Bind to localhost only — Nginx proxies genesisos.genesisagi.in → :3001
       - "127.0.0.1:3001:3000"
-
-  model-init:
+    extra_hosts:
+      # Allows daemon container to reach host's Ollama on 127.0.0.1:11434
+      - "host.docker.internal:host-gateway"
     environment:
-      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - GENESIS_VOICE_ENABLED=false
+      - GENESIS_ALLOW_INSECURE_TLS=false
+      - OLLAMA_NUM_GPU=0
