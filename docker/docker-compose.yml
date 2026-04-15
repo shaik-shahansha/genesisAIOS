@@ -7,8 +7,9 @@ services:
     image: ollama/ollama:latest
     container_name: genesis-ollama
     restart: unless-stopped
-    ports:
-      - "11434:11434"
+    # Port 11434 is NOT exposed to the host by default.
+    # Other containers reach Ollama via the Docker network (http://ollama:11434).
+    # To expose externally, add ports: ["11434:11434"] in your own override file.
     volumes:
       - ollama_data:/root/.ollama
       - ./ollama-entrypoint.sh:/ollama-entrypoint.sh:ro
