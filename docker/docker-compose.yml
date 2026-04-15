@@ -34,8 +34,9 @@ services:
       dockerfile: docker/Dockerfile
     container_name: genesis-daemon
     restart: unless-stopped
-    ports:
-      - "${GENESIS_PORT:-3000}:3000"
+    # Port binding is defined per-environment in override files.
+    # Default local: 3000:3000 — add to your docker-compose.override.yml
+    # VPS: 127.0.0.1:3001:3000 — defined in docker-compose.vps.yml
     depends_on:
       ollama:
         condition: service_healthy
