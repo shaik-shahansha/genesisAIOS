@@ -30,11 +30,13 @@ async function chat(messages, { model, tools, signal } = {}) {
   };
   if (tools && tools.length) body.tools = tools;
 
+  // signal: null means no timeout (e.g. long HTML generation); undefined means use default 180s
+  const fetchSignal = signal === null ? undefined : (signal || AbortSignal.timeout(180_000));
   const res = await fetch(`${OLLAMA_BASE}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    signal: signal || AbortSignal.timeout(180_000),
+    signal: fetchSignal,
   });
 
   if (!res.ok) {

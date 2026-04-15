@@ -1134,6 +1134,44 @@ async function runTool(name, args, options = {}) {
     }
     case 'generate_image': return toolGenerateImage(args || {}, options);
     case 'create_app': return toolCreateApp(args || {}, options);
+    // Aliases for common model hallucinations — normalize arg names and delegate
+    case 'create_mini_app_shell':
+    case 'create_mini_app':
+    case 'build_app':
+    case 'make_app': {
+      const normalized = {
+        name: args?.name || args?.app_name || args?.appName || 'App',
+        description: args?.description,
+        icon: args?.icon,
+        html_content: args?.html_content || args?.htmlContent || args?.html,
+      };
+      if (!normalized.html_content) {
+        // Generate HTML via LLM since the model didn't provide it
+        const appName = normalized.name;
+        const htmlPrompt = [
+          {
+            role: 'system',
+            content:
+              'You are an expert front-end developer. Output ONLY the complete raw HTML — no explanations, no markdown fences. The HTML must be fully self-contained (inline CSS and JS) and use IndexedDB for persistence. Use a dark glassmorphism theme with accent #7C3AED.',
+          },
+          {
+            role: 'user',
+            content: `Build a complete "${appName}" app (${normalized.description || appName}). Output ONLY raw HTML starting with <!DOCTYPE html>. No markdown.`,
+          },
+        ];
+        let html = '';
+        try {
+          const msg = await chat(htmlPrompt, { model: undefined });
+          html = (msg.content || '').trim()
+            .replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+        } catch { /* fall through */ }
+        if (!html.toLowerCase().includes('<html')) {
+          throw new Error(`App creation failed: could not generate HTML for "${appName}"`);
+        }
+        normalized.html_content = html;
+      }
+      return toolCreateApp(normalized, options);
+    }
     default: throw new Error(`Unknown tool: ${name}`);
   }
 }
@@ -1232,9 +1270,15 @@ async function tryHandleDirectAction(message, onEvent) {
   // HTML string as a tool argument (which often fails or asks clarifying questions),
   // we intercept here, call the LLM with a focused HTML-generation prompt, then
   // call toolCreateApp directly with the output.
-  const createAppMatch = text.match(
-    /\b(?:create|build|make|generate)\s+(?:(?:a|an|me|the)\s+)?(.+?)\s+app\b/i
-  );
+  const createAppMatch =
+    text.match(/\b(?:create|build|make|generate)\s+(?:(?:a|an|me|the)\s+)?(.+?)\s+app\b/i) ||
+    (() => {
+      // Also match "create app for/about/to/called X" format
+      const m = text.match(
+        /\b(?:create|build|make|generate)\s+(?:an?\s+)?app\s+(?:for|about|to|called|named|that)?\s*(.+)/i
+      );
+      return m;
+    })();
   if (createAppMatch) {
     const { addLog } = require('../logger');
     const appDescription = createAppMatch[1].trim();
@@ -1265,6 +1309,10 @@ async function tryHandleDirectAction(message, onEvent) {
 
     addLog('info', `[agent] create_app direct action — generating HTML for "${appName}"`);
 
+    // Stream a pre-message so the user knows it's working (can take 1-3 min on CPU)
+    const preMsg = `Building **${appName}** ${icon}\u2026 This may take 1\u20133 minutes on CPU. Hang tight!\n\n`;
+    for (const char of preMsg) onEvent?.({ token: char });
+
     // Focused LLM call: generate only HTML, no tool calls needed
     const htmlPrompt = [
       {
@@ -1280,7 +1328,8 @@ async function tryHandleDirectAction(message, onEvent) {
 
     let htmlContent = '';
     try {
-      const htmlMsg = await chat(htmlPrompt, { model: undefined });
+      // No timeout — HTML generation can legitimately take several minutes on CPU
+      const htmlMsg = await chat(htmlPrompt, { model: undefined, signal: null });
       htmlContent = (htmlMsg.content || '').trim();
       // Strip any accidental markdown code fences the model may add
       htmlContent = htmlContent
@@ -1290,12 +1339,14 @@ async function tryHandleDirectAction(message, onEvent) {
         .trim();
     } catch (err) {
       addLog('warn', `[agent] create_app HTML generation failed: ${err.message}`);
-      return null; // fall through to normal agent loop
+      const errMsg = `Failed to build **${appName}**: ${err.message}`;
+      return { content: errMsg, actions: [] };
     }
 
     if (!htmlContent.toLowerCase().includes('<html')) {
-      addLog('warn', '[agent] create_app: LLM did not return valid HTML, falling back to agent loop');
-      return null; // fall through to normal agent loop
+      addLog('warn', '[agent] create_app: LLM did not return valid HTML');
+      const errMsg = `Failed to build **${appName}**: the model did not return valid HTML. Please try again.`;
+      return { content: errMsg, actions: [] };
     }
 
     const result = await toolCreateApp({
@@ -1306,9 +1357,13 @@ async function tryHandleDirectAction(message, onEvent) {
     });
 
     if (result?.action) emit(result.action);
+    const finalMsg = result?.finalMessage || `Created app **${appName}** ${icon}.`;
+    // Stream the final "Created app" message as tokens (appended after the pre-message)
+    for (const char of finalMsg) onEvent?.({ token: char });
     return {
-      content: result?.finalMessage || `Created app **${appName}** ${icon}.`,
+      content: finalMsg,
       actions: result?.action ? [result.action] : [],
+      _tokensAlreadyStreamed: true,  // tell the SSE route not to double-stream content
     };
   }
 
@@ -1844,8 +1899,14 @@ router.post('/chat', async (req, res) => {
 
     if (directAction) {
       full = directAction.content || '';
-      for (const char of full) {
-        res.write(`data: ${JSON.stringify({ token: char })}\n\n`);
+      // Pre-message tokens (building notice) were already streamed via onEvent during
+      // tryHandleDirectAction. The final content (success/error) still needs streaming,
+      // but skip re-streaming if it matches the last thing already sent (create_app
+      // streams its own success via finalMessage through the action event).
+      if (!directAction._tokensAlreadyStreamed) {
+        for (const char of full) {
+          res.write(`data: ${JSON.stringify({ token: char })}\n\n`);
+        }
       }
     } else {
       // Always run through the agent loop — Gemma 4 decides itself whether to call tools
