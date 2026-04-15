@@ -38,3 +38,7 @@ services:
       - GENESIS_VOICE_ENABLED=false
       - GENESIS_ALLOW_INSECURE_TLS=false
       - OLLAMA_NUM_GPU=0
+    # Override depends_on — ollama and voice run on the host, not in Docker
+    depends_on:
+      memory:
+        condition: service_healthy
