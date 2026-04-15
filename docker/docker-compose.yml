@@ -17,15 +17,8 @@ services:
     environment:
       - OLLAMA_ORIGINS=*
       - OLLAMA_INSECURE=true
-      # Keep all layers on GPU; unset or set to 0 to offload to CPU
-      - OLLAMA_NUM_GPU=${OLLAMA_NUM_GPU:-999}
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+      # Set to 999 to use GPU, 0 to force CPU-only
+      - OLLAMA_NUM_GPU=${OLLAMA_NUM_GPU:-0}
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 30s
