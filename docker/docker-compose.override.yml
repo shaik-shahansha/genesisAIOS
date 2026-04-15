@@ -1,0 +1,7 @@
+services:
+  ollama:
+    deploy: {}
+
+  daemon:
+    ports:
+      - "${GENESIS_PORT:-3000}:3000"
