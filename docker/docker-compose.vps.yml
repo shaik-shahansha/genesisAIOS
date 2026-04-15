@@ -1,0 +1,35 @@
+# VPS overlay for genesisos.genesisagi.in
+#
+# Usage:
+#   docker compose -f docker/docker-compose.yml \
+#                  -f docker/docker-compose.override.yml \
+#                  -f docker/docker-compose.vps.yml \
+#                  up -d
+#
+# What this does:
+#   - Keeps Ollama inside Docker but does NOT expose port 11434 to the host
+#     (avoids conflict with the host's own Ollama process)
+#   - Mounts the host's Ollama model cache (/root/.ollama) so models already
+#     downloaded on the host are immediately available — no re-download needed
+#   - Binds the Genesis daemon to 127.0.0.1:3001 (localhost only, Nginx proxies it)
+
+services:
+
+  ollama:
+    # Strip GPU reservation (already done by docker-compose.override.yml,
+    # kept here for safety in case override is not passed)
+    deploy: {}
+    # Do NOT expose 11434 to the host — host already has Ollama on that port
+    ports: []
+    # Reuse models already downloaded by the host Ollama — saves disk & time
+    volumes:
+      - /root/.ollama:/root/.ollama
+
+  daemon:
+    ports:
+      # Bind to localhost only — Nginx proxies genesisos.genesisagi.in → :3001
+      - "127.0.0.1:3001:3000"
+
+  model-init:
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
