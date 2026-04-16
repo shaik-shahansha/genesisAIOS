@@ -356,7 +356,87 @@ const TOOL_DEFS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'update_app',
+      description: 'Modify an existing mini app created by Genesis. Provide the app name and a description of the changes to make, or provide the full new html_content to replace it entirely.',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'The exact (or close) name of the app to update, e.g. "Inventory Tracker".' },
+          changes: { type: 'string', description: 'Natural-language description of what to change in the app. The existing HTML will be read and the changes applied.' },
+          html_content: { type: 'string', description: 'Full replacement HTML if you already have the new code. Use instead of changes.' },
+        },
+        required: ['name'],
+      },
+    },
+  },
 ];
+
+// ─── HTML generation system prompt ───────────────────────────────────────────
+// Shared by toolCreateApp and toolUpdateApp. Gives the LLM the exact working
+// IndexedDB pattern so generated apps don't have broken persistence.
+const HTML_GEN_SYSTEM_PROMPT = `You are an expert front-end developer. Output ONLY raw HTML — no markdown fences, no explanation. The app must be:
+- Fully self-contained (all CSS and JS inline)
+- Dark glassmorphism theme: body background linear-gradient #0f0c29→#302b63, accent colour #7C3AED
+- Persistent using IndexedDB (NEVER use localStorage for data)
+
+CRITICAL INDEXEDDB RULES — follow this pattern exactly, no variations:
+
+1. Declare \`let db;\` at the TOP of the <script> block (module-level variable)
+2. openDB() sets the module-level db on onsuccess — do NOT close the db after opening
+3. Every CRUD function uses the module-level \`db\` variable directly via \`db.transaction(...)\`
+4. DOMContentLoaded handler must: (a) await openDB(), (b) await loadAndRender(), (c) attach ONE addEventListener per button
+5. Element IDs in addEventListener calls MUST EXACTLY match the id= attributes in your HTML
+6. NEVER define the same function more than once
+7. NEVER reference a variable outside its scope
+
+WORKING SKELETON to follow:
+\`\`\`
+let db;
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('AppDB', 1);
+    req.onupgradeneeded = e => {
+      const idb = e.target.result;
+      if (!idb.objectStoreNames.contains('items'))
+        idb.createObjectStore('items', { keyPath: 'id', autoIncrement: true });
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror  = e => reject(e.target.error);
+  });
+}
+async function getAllItems() {
+  return new Promise(resolve => {
+    const req = db.transaction(['items'], 'readonly').objectStore('items').getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror  = () => resolve([]);
+  });
+}
+async function addItem(data) {
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(['items'], 'readwrite').objectStore('items').add(data);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror  = e => reject(e.target.error);
+  });
+}
+async function deleteItem(id) {
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(['items'], 'readwrite').objectStore('items').delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror  = e => reject(e.target.error);
+  });
+}
+async function loadAndRender() { /* load getAllItems(), build DOM */ }
+document.addEventListener('DOMContentLoaded', async () => {
+  await openDB();
+  await loadAndRender();
+  document.getElementById('addBtn').addEventListener('click', handleAdd); // id must match HTML
+});
+\`\`\`
+
+Now output the complete app HTML:`;
 
 // ─── Memory service helpers ───────────────────────────────────────────────────
 const MEMORY_URL = process.env.MEMORY_SERVICE_URL;
@@ -1062,13 +1142,10 @@ async function toolCreateApp({ name, description, icon, html_content }, options 
     for (const char of preMsg) onEvent?.({ token: char });
     addLog('info', `[create_app] auto-generating HTML for "${name}"`);
     const htmlPrompt = [
-      {
-        role: 'system',
-        content: 'You are an expert front-end developer. Output ONLY raw HTML \u2014 no markdown fences, no explanation. The app must be fully self-contained (inline CSS + JS), use IndexedDB for persistence, and use a dark glassmorphism theme with accent colour #7C3AED.',
-      },
+      { role: 'system', content: HTML_GEN_SYSTEM_PROMPT },
       {
         role: 'user',
-        content: `Build a complete "${name}" app${description ? ` \u2014 ${description}` : ''}. Output ONLY raw HTML starting with <!DOCTYPE html> and ending with </html>. No markdown.`,
+        content: `Build a complete, fully functional "${name}" app${description ? ` — ${description}` : ''}. Output ONLY the raw HTML starting with <!DOCTYPE html> and ending with </html>. No markdown.`,
       },
     ];
     try {
@@ -1102,6 +1179,73 @@ async function toolCreateApp({ name, description, icon, html_content }, options 
     action: { type: 'open_app', appId: `userapp_${id}`, props: { appId: id } },
     skipFinalLlm: true,
     finalMessage: `Created app **${name}** ${icon || '🧩'}. Opening now.`,
+  };
+}
+
+async function toolUpdateApp({ name, changes, html_content }, options = {}) {
+  const { addLog } = require('../logger');
+  const { onEvent } = options;
+  const db2 = require('../db');
+
+  // Find app by exact name then fuzzy match
+  let existing = db2.prepare('SELECT * FROM created_apps WHERE LOWER(name) = LOWER(?)').get(name);
+  if (!existing) {
+    const all = db2.prepare('SELECT * FROM created_apps').all();
+    existing = all.find(
+      (a) =>
+        a.name.toLowerCase().includes(name.toLowerCase()) ||
+        name.toLowerCase().includes(a.name.toLowerCase())
+    );
+    if (!existing) {
+      const names = all.map((a) => a.name).join(', ') || 'none';
+      throw new Error(`App "${name}" not found. Available apps: ${names}`);
+    }
+  }
+
+  if (!html_content) {
+    if (!changes) throw new Error('Provide either html_content or a description of changes.');
+    const preMsg = `Updating **${existing.name}** ${existing.icon}\u2026 Hang tight!\n\n`;
+    for (const char of preMsg) onEvent?.({ token: char });
+    addLog('info', `[update_app] updating "${existing.name}" — ${changes}`);
+
+    const editPrompt = [
+      { role: 'system', content: HTML_GEN_SYSTEM_PROMPT },
+      {
+        role: 'user',
+        content: `Here is the current HTML for the "${existing.name}" app:\n\n${existing.html_content}\n\nApply this change: ${changes}\n\nOutput ONLY the complete updated HTML starting with <!DOCTYPE html> and ending with </html>. Preserve all existing functionality not mentioned in the change. No markdown.`,
+      },
+    ];
+    try {
+      const msg = await chat(editPrompt, { model: undefined, signal: null });
+      html_content = (msg.content || '').trim()
+        .replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+    } catch (err) {
+      addLog('warn', `[update_app] failed: ${err.message}`);
+      throw new Error(`App update failed: ${err.message}`);
+    }
+    if (!html_content.toLowerCase().includes('<html')) {
+      throw new Error('Model did not return valid HTML for the update. Please try again.');
+    }
+  }
+
+  // Persist to SQLite
+  db2.prepare('UPDATE created_apps SET html_content = ? WHERE id = ?').run(html_content, existing.id);
+
+  // Persist to disk
+  await ensureWorkspaceStructure();
+  const safeName = existing.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const appDir = path.join(ROOT, 'apps', safeName);
+  await fs.mkdir(appDir, { recursive: true });
+  await fs.writeFile(path.join(appDir, 'index.html'), html_content, 'utf8');
+
+  return {
+    ok: true,
+    id: existing.id,
+    name: existing.name,
+    icon: existing.icon,
+    action: { type: 'open_app', appId: `userapp_${existing.id}`, props: { appId: existing.id } },
+    skipFinalLlm: true,
+    finalMessage: `Updated app **${existing.name}** ${existing.icon}. Opening now.`,
   };
 }
 
@@ -1177,6 +1321,7 @@ async function runTool(name, args, options = {}) {
     }
     case 'generate_image': return toolGenerateImage(args || {}, options);
     case 'create_app': return toolCreateApp(args || {}, options);
+    case 'update_app': return toolUpdateApp(args || {}, options);
     // Aliases for hallucinated tool names — normalize args and let toolCreateApp handle HTML generation
     case 'create_mini_app_shell':
     case 'create_mini_app':
@@ -1394,12 +1539,11 @@ async function runAgent(messages, { model, onEvent, signal }) {
     const htmlPrompt = [
       {
         role: 'system',
-        content:
-          'You are an expert front-end developer. When asked to build an app, you output ONLY the complete raw HTML file — no explanations, no markdown fences, no commentary. Just the HTML. The HTML must be self-contained (inline all CSS and JS) and use IndexedDB for any persistent storage. Apply a dark glassmorphism theme with accent colour #7C3AED.',
+        content: HTML_GEN_SYSTEM_PROMPT,
       },
       {
         role: 'user',
-        content: `Build a complete, fully functional single-page "${appName}" app. Output ONLY the raw HTML — starting with <!DOCTYPE html> and ending with </html>. No markdown code fences.`,
+        content: `Build a complete, fully functional "${appName}" app. Output ONLY the raw HTML starting with <!DOCTYPE html> and ending with </html>. No markdown.`,
       },
     ];
 
@@ -1442,6 +1586,43 @@ async function runAgent(messages, { model, onEvent, signal }) {
       actions: result?.action ? [result.action] : [],
       _tokensAlreadyStreamed: true,  // tell the SSE route not to double-stream content
     };
+  }
+
+  // ── update_app: handle "modify/update/fix/change/improve <name> app" ────────
+  const updateAppMatch = text.match(
+    /\b(?:modify|update|fix|change|improve|edit|upgrade|add\s+\w+\s+to|remove\s+\w+\s+from)\b.{1,60}?\b([\w\s\-]+?)\s+app\b/i
+  ) || text.match(
+    /\b(?:in|for|on)\s+(?:my\s+|the\s+)?([\w\s\-]+?)\s+app[,\s].{5,}/i
+  );
+  if (updateAppMatch) {
+    const { addLog } = require('../logger');
+    const db2 = require('../db');
+    const candidateName = (updateAppMatch[1] || updateAppMatch[0]).trim();
+    // Only proceed if we can actually find a matching app
+    const all = db2.prepare('SELECT id, name FROM created_apps').all();
+    const existingApp = all.find(
+      (a) =>
+        a.name.toLowerCase().includes(candidateName.toLowerCase()) ||
+        candidateName.toLowerCase().includes(a.name.toLowerCase())
+    );
+    if (existingApp) {
+      addLog('info', `[agent] update_app direct action — "${existingApp.name}" — changes: ${text}`);
+      let result;
+      try {
+        result = await toolUpdateApp({ name: existingApp.name, changes: text }, { onEvent, addLog });
+      } catch (err) {
+        addLog('warn', `[agent] update_app failed: ${err.message}`);
+        return { content: `Failed to update **${existingApp.name}**: ${err.message}`, actions: [] };
+      }
+      if (result?.action) emit(result.action);
+      const finalMsg = result?.finalMessage || `Updated app **${existingApp.name}** ${existingApp.icon}.`;
+      for (const char of finalMsg) onEvent?.({ token: char });
+      return {
+        content: finalMsg,
+        actions: result?.action ? [result.action] : [],
+        _tokensAlreadyStreamed: true,
+      };
+    }
   }
 
   return null;
