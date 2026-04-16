@@ -34,6 +34,8 @@ function getIcon(item) {
   );
 }
 
+const TEXT_SUMMARIZABLE = new Set(['txt', 'md', 'markdown', 'html', 'htm', 'js', 'ts', 'jsx', 'tsx', 'py', 'sh', 'json', 'yaml', 'yml', 'csv', 'xml', 'css', 'rtf', 'log', 'doc', 'docx', 'pdf']);
+
 export default function FileManager({ winId }) {
   const { demoMode } = useOS();
   const [cwd, setCwd] = useState('');
@@ -48,6 +50,83 @@ export default function FileManager({ winId }) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
   const uploadInputRef = useRef(null);
+  const [summaryPanel, setSummaryPanel] = useState(null); // null | { file, text, loading }
+
+  const handleAISummary = async (item) => {
+    setSummaryPanel({ file: item, text: '', loading: true });
+    try {
+      let content = '';
+
+      if (item.ext === 'pdf') {
+        // Extract text client-side using pdfjs-dist
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+          'pdfjs-dist/build/pdf.worker.min.js',
+          import.meta.url
+        ).toString();
+
+        const rawUrl = `/api/fs/raw?path=${encodeURIComponent(item.path)}`;
+        const arrayBuffer = await fetch(rawUrl).then(r => r.arrayBuffer());
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const maxPages = Math.min(pdf.numPages, 20); // cap at 20 pages
+        const pageTexts = [];
+        for (let i = 1; i <= maxPages; i++) {
+          const page = await pdf.getPage(i);
+          const tc = await page.getTextContent();
+          pageTexts.push(tc.items.map(s => s.str).join(' '));
+        }
+        content = pageTexts.join('\n');
+      } else {
+        // Read file content as text
+        const readRes = await fetch(`/api/fs/read?path=${encodeURIComponent(item.path)}`);
+        if (!readRes.ok) throw new Error(`Could not read file (HTTP ${readRes.status})`);
+        ({ content } = await readRes.json());
+      }
+
+      if (!content || !content.trim()) throw new Error('No readable text found in this file.');
+
+      const truncated = content.length > 12000 ? content.slice(0, 12000) + '\n\n[…content truncated for summary…]' : content;
+
+      // Stream summary from AI
+      const chatRes = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Please provide a concise summary of the following file named "${item.name}". Cover the main topics, purpose, and key points in 3-5 sentences.\n\n---\n${truncated}`
+        })
+      });
+
+      if (!chatRes.ok) throw new Error(`AI error (HTTP ${chatRes.status})`);
+
+      const reader = chatRes.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const raw = line.slice(6).trim();
+          if (raw === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(raw);
+            const delta = parsed.choices?.[0]?.delta?.content ?? parsed.response ?? '';
+            if (delta) {
+              accumulated += delta;
+              setSummaryPanel(prev => prev ? { ...prev, text: accumulated } : null);
+            }
+          } catch { /* skip malformed SSE lines */ }
+        }
+      }
+
+      setSummaryPanel(prev => prev ? { ...prev, loading: false } : null);
+    } catch (err) {
+      setSummaryPanel(prev => prev ? { ...prev, text: `Error: ${err.message}`, loading: false } : null);
+    }
+  };
 
   const load = useCallback(async (path) => {
     setLoading(true);
@@ -197,7 +276,7 @@ export default function FileManager({ winId }) {
   const breadcrumbs = cwd ? ['Home', ...cwd.split('/')].filter(Boolean) : ['Home'];
 
   return (
-    <div className="flex flex-col h-full text-white">
+    <div className="relative flex flex-col h-full text-white">
       {/* Toolbar */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-white/8">
         <button onClick={goBack} disabled={histIdx === 0} className="text-white/50 hover:text-white disabled:opacity-20 text-lg px-1">‹</button>
@@ -405,6 +484,20 @@ export default function FileManager({ winId }) {
                     Download
                   </button>
                 )}
+                {selected.type === 'file' && TEXT_SUMMARIZABLE.has(selected.ext) && (
+                  <button
+                    onClick={() => handleAISummary(selected)}
+                    title="Summarize with AI"
+                    className="flex items-center gap-1 text-white/50 hover:text-violet-400 transition-colors"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="10" cy="10" r="7"/>
+                      <path d="M7 9c0-1.7 1.3-3 3-3s3 1.3 3 3c0 1.4-.9 2.6-2.2 2.9L10 13"/>
+                      <circle cx="10" cy="15.5" r=".75" fill="currentColor" stroke="none"/>
+                    </svg>
+                    AI Summary
+                  </button>
+                )}
                 <button onClick={() => handleOpen(selected)} className="text-accent hover:text-accent-light transition-colors">
                   Open →
                 </button>
@@ -413,6 +506,45 @@ export default function FileManager({ winId }) {
           )}
         </div>
       )}
+
+      {/* AI Summary Panel */}
+      <AnimatePresence>
+        {summaryPanel && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-x-0 bottom-0 z-20 mx-2 mb-2 rounded-2xl border border-white/10 bg-[rgba(18,12,40,0.92)] backdrop-blur-xl shadow-2xl"
+            style={{ maxHeight: '55%', display: 'flex', flexDirection: 'column' }}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/8">
+              <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#7C3AED" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="10" cy="10" r="7"/>
+                <path d="M7 9c0-1.7 1.3-3 3-3s3 1.3 3 3c0 1.4-.9 2.6-2.2 2.9L10 13"/>
+                <circle cx="10" cy="15.5" r=".75" fill="#7C3AED" stroke="none"/>
+              </svg>
+              <span className="text-white/80 text-xs font-medium flex-1 truncate">AI Summary — {summaryPanel.file.name}</span>
+              {summaryPanel.loading && (
+                <span className="text-violet-400 text-xs animate-pulse">Summarizing…</span>
+              )}
+              <button
+                onClick={() => setSummaryPanel(null)}
+                className="text-white/30 hover:text-white/70 text-sm transition-colors ml-2"
+                title="Close"
+              >✕</button>
+            </div>
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 text-sm text-white/75 leading-relaxed whitespace-pre-wrap">
+              {summaryPanel.text || (summaryPanel.loading ? '' : 'No summary available.')}
+              {summaryPanel.loading && !summaryPanel.text && (
+                <span className="text-white/30 italic">Reading file…</span>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import NotificationPanel from './shell/NotificationPanel';
 import AIOrb from './shell/AIOrb';
 import SplashScreen from './shell/SplashScreen';
 import LockScreen from './components/LockScreen';
+import PWAInstallBanner from './components/PWAInstallBanner';
 import { APP_REGISTRY, resolveApp } from './apps/registry';
 
 // ─── OS Context ────────────────────────────────────────────────────────────────
@@ -220,7 +221,14 @@ export default function App() {
             className="text-white/22 font-semibold tracking-widest uppercase"
             style={{ fontSize: '10px', letterSpacing: '0.18em' }}
           >
-            Genesis AI OS &middot; by Sha
+            Genesis AI OS &middot; by Sha{demoMode && (
+              <span
+                className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-widest uppercase"
+                style={{ background: 'rgba(239,68,68,0.18)', color: '#f87171', border: '1px solid rgba(239,68,68,0.35)' }}
+              >
+                DEMO
+              </span>
+            )}
           </span>
         </div>
 
@@ -234,6 +242,9 @@ export default function App() {
           </button>
         )}
       </div>
+
+      {/* PWA install prompt — rendered outside the wallpaper div so it's always on top */}
+      <PWAInstallBanner />
     </OSContext.Provider>
   );
 }

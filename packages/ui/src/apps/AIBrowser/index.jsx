@@ -1,242 +1,90 @@
-﻿import React, { useEffect, useState, useRef } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 
 export default function AIBrowser({ initialUrl = '', url: initialUrlAlias = '' }) {
-  const startingUrl = initialUrl || initialUrlAlias || '';
-  const [url, setUrl] = useState(startingUrl);
-  const [currentUrl, setCurrentUrl] = useState(startingUrl);
-  const [summary, setSummary] = useState('');
-  const [loadingSummary, setLoadingSummary] = useState(false);
-  const [question, setQuestion] = useState('');
-  const [iframeBlocked, setIframeBlocked] = useState(false);
-  const iframeRef = useRef(null);
-
-  const navigate = (target) => {
-    let nav = target.trim();
-    if (!nav) return;
-    if (!nav.startsWith('http://') && !nav.startsWith('https://') && nav.includes(' ')) {
-      nav = `https://duckduckgo.com/?q=${encodeURIComponent(nav)}`;
-    } else if (!nav.startsWith('http://') && !nav.startsWith('https://')) {
-      nav = `https://${nav}`;
-    }
-    setCurrentUrl(nav);
-    setUrl(nav);
-    setSummary('');
-    setIframeBlocked(false);
-  };
+  const [browserConfig, setBrowserConfig] = useState(null);
+  const [configError, setConfigError] = useState('');
+  const [frameLoaded, setFrameLoaded] = useState(false);
+  const [frameNonce, setFrameNonce] = useState(0);
 
   useEffect(() => {
-    if (startingUrl) {
-      navigate(startingUrl);
-    }
-  }, [startingUrl]);
+    let cancelled = false;
 
-  // Sync URL bar when the iframe navigates via service worker redirects
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.data?.type === 'genesis-nav' && e.data.url) {
-        setUrl(e.data.url);
-        setCurrentUrl(e.data.url);
-      }
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, []);
-
-  const proxyUrl = currentUrl
-    ? `/api/browse/proxy?url=${encodeURIComponent(currentUrl)}`
-    : '';
-
-  const summarize = async (q) => {
-    if (!currentUrl) return;
-    setLoadingSummary(true);
-    setSummary('');
-    try {
-      const res = await fetch('/api/browse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: currentUrl, question: q || undefined }),
+    fetch('/api/browser/config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        setBrowserConfig(data);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setConfigError(err.message || 'Failed to load browser configuration.');
       });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setSummary(data.summary);
-    } catch (e) {
-      setSummary(`Error: ${e.message}`);
-    } finally {
-      setLoadingSummary(false);
-    }
-  };
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialUrl, initialUrlAlias]);
+
+  const sessionSrc = browserConfig?.enabled ? `${browserConfig.sessionUrl}?v=${frameNonce}` : '';
 
   return (
-    <div className="flex flex-col h-full text-white">
-      {/* URL bar */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/8">
-        <button
-          onClick={() => iframeRef.current?.contentWindow?.history.back()}
-          className="text-white/50 hover:text-white px-1"
-          title="Back"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10 12L6 8l4-4"/>
-          </svg>
-        </button>
-        <button
-          onClick={() => iframeRef.current?.contentWindow?.history.forward()}
-          className="text-white/50 hover:text-white px-1"
-          title="Forward"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 12l4-4-4-4"/>
-          </svg>
-        </button>
-        <button
-          onClick={() => navigate(currentUrl)}
-          className="text-white/50 hover:text-white px-1"
-          title="Reload"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M13.5 6A6 6 0 1 0 12 11"/>
-            <path d="M13.5 2v4h-4"/>
-          </svg>
-        </button>
-
-        <form
-          onSubmit={(e) => { e.preventDefault(); navigate(url); }}
-          className="flex-1 flex"
-        >
-          <input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Enter URL or search term..."
-            className="flex-1 bg-white/5 rounded-lg px-3 py-1.5 text-sm text-white outline-none placeholder:text-white/30 border border-white/10 focus:border-accent"
-          />
-        </form>
-
-        <button
-          onClick={() => summarize()}
-          disabled={!currentUrl || loadingSummary}
-          className="px-3 py-1.5 bg-accent/80 hover:bg-accent rounded-lg text-white text-xs transition-colors disabled:opacity-40 whitespace-nowrap flex items-center gap-1"
-          title="AI summarize this page"
-        >
-          <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor"><path d="M6 0l1.2 4.8L12 6l-4.8 1.2L6 12 4.8 7.2 0 6l4.8-1.2z"/></svg>
-          {loadingSummary ? 'AI...' : 'AI'}
-        </button>
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Browser frame */}
-        <div className="flex-1 relative bg-white">
-          {!currentUrl && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/30 gap-4 bg-[#12121f]">
-              <div className="w-14 h-14 rounded-2xl glass flex items-center justify-center text-white/70">
-                <svg width="24" height="24" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="10" cy="10" r="7.5" />
-                  <path d="M2.5 10h15M10 2.5c-2 2-3 4.5-3 7.5s1 5.5 3 7.5M10 2.5c2 2 3 4.5 3 7.5s-1 5.5-3 7.5" />
-                </svg>
-              </div>
-              <p className="text-sm">Browse the web</p>
-              <div className="flex flex-col gap-2 w-56">
-                {['https://genesisagi.in', 'https://wikipedia.org', 'https://news.ycombinator.com'].map((u) => (
-                  <button
-                    key={u}
-                    onClick={() => navigate(u)}
-                    className="text-xs text-accent hover:text-accent-light transition-colors text-left truncate"
-                  >
-                    {u}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          {currentUrl && iframeBlocked && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50 gap-4 p-8 text-center bg-[#12121f]">
-              <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-white/30">
-                <circle cx="24" cy="24" r="20"/>
-                <path d="M8.5 8.5l31 31"/>
-              </svg>
-              <p className="text-sm font-medium text-white/70">This site blocks embedded viewing</p>
-              <p className="text-xs text-white/40 max-w-xs">
-                {currentUrl.includes('google.com')
-                  ? 'Google disables iframe embedding. Try DuckDuckGo instead, or use the AI button above to summarize.'
-                  : 'This site cannot be previewed here. Open it in a new tab or use the AI button to summarize.'}
-              </p>
-              <div className="flex gap-2 flex-wrap justify-center">
-                <button
-                  onClick={() => navigate(`https://duckduckgo.com/?q=${encodeURIComponent(currentUrl)}`)}
-                  className="px-3 py-1.5 bg-accent/80 hover:bg-accent rounded-lg text-white text-xs"
-                >
-                  Search DuckDuckGo instead
-                </button>
-                <a
-                  href={currentUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs"
-                >
-                  Open in new tab &#8599;
-                </a>
-              </div>
-            </div>
-          )}
-          {currentUrl && !iframeBlocked && (
-            <iframe
-              ref={iframeRef}
-              src={proxyUrl}
-              title="AI Browser"
-              className="w-full h-full border-0"
-              onLoad={() => {
-                // Detect if the iframe loaded an error/blocked page
-                try {
-                  const doc = iframeRef.current?.contentDocument;
-                  if (doc) {
-                    const body = doc.body?.innerText || '';
-                    if (body.startsWith('Proxy failed:') || body.includes('ERR_') || body.includes('refused to connect')) {
-                      setIframeBlocked(true);
-                    }
-                  }
-                } catch {
-                  // cross-origin iframe — loaded OK from proxy
-                }
-              }}
-              onError={() => setIframeBlocked(true)}
-            />
-          )}
-        </div>
-
-        {/* AI sidebar */}
-        {summary && (
-          <div className="w-72 border-l border-white/8 flex flex-col overflow-hidden">
-            <div className="px-3 py-2 border-b border-white/8 flex items-center justify-between">
-              <span className="text-xs text-white/60 font-medium flex items-center gap-1">
-                <svg width="10" height="10" viewBox="0 0 12 12" fill="currentColor" className="text-accent"><path d="M6 0l1.2 4.8L12 6l-4.8 1.2L6 12 4.8 7.2 0 6l4.8-1.2z"/></svg>
-                AI Summary
-              </span>
-              <button onClick={() => setSummary('')} className="text-white/30 hover:text-white/60 text-sm leading-none">&#10005;</button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3">
-              <p className="text-white/80 text-xs leading-relaxed whitespace-pre-wrap">{summary}</p>
-            </div>
-            <div className="p-2 border-t border-white/8">
-              <div className="flex gap-1">
-                <input
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { summarize(question); setQuestion(''); } }}
-                  placeholder="Ask about this page..."
-                  className="flex-1 bg-white/5 rounded px-2 py-1 text-xs text-white outline-none placeholder:text-white/30 border border-white/8"
-                />
-                <button
-                  onClick={() => { summarize(question); setQuestion(''); }}
-                  className="px-2 py-1 bg-accent rounded text-xs text-white"
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6 10V2M2 6l4-4 4 4"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
+    <div className="relative h-full overflow-hidden bg-[#05070d] text-white">
+      {!frameLoaded && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[linear-gradient(180deg,rgba(5,7,13,0.92),rgba(5,7,13,0.76))] text-center">
+          <div className="h-12 w-12 animate-pulse rounded-2xl border border-white/10 bg-white/6" />
+          <div>
+            <p className="text-sm text-white/78">Starting browser</p>
+            <p className="mt-1 text-xs text-white/40">Please wait a moment.</p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {configError && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-6">
+          <div className="max-w-md rounded-2xl border border-red-400/20 bg-red-500/10 p-5 text-center backdrop-blur-xl">
+            <p className="text-sm font-medium text-red-100">Browser configuration failed</p>
+            <p className="mt-2 text-xs text-red-100/70">{configError}</p>
+          </div>
+        </div>
+      )}
+
+      {!configError && browserConfig && !browserConfig.enabled && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center p-6">
+          <div className="max-w-md rounded-2xl border border-white/10 bg-white/5 p-5 text-center backdrop-blur-xl">
+            <p className="text-sm font-medium text-white/88">Genesis Browser is disabled</p>
+            <p className="mt-2 text-xs text-white/50">Enable Neko in Docker with GENESIS_BROWSER_ENABLED=true.</p>
+          </div>
+        </div>
+      )}
+
+      {browserConfig?.enabled && (
+        <>
+          <iframe
+            key={sessionSrc}
+            src={sessionSrc}
+            title="Genesis Browser"
+            className="h-full w-full border-0"
+            allow="autoplay; clipboard-read; clipboard-write; fullscreen"
+            allowFullScreen
+            onLoad={() => setFrameLoaded(true)}
+          />
+
+          <button
+            onClick={() => {
+              setFrameLoaded(false);
+              setFrameNonce((prev) => prev + 1);
+            }}
+            className="absolute right-4 top-4 z-20 rounded-lg border border-white/10 bg-[#11161fcc] px-3 py-1.5 text-xs text-white/75 shadow-[0_12px_32px_rgba(0,0,0,0.34)] backdrop-blur-xl transition hover:bg-[#1a202bcc] hover:text-white"
+          >
+            Reconnect
+          </button>
+
+          <div
+            className="pointer-events-none absolute bottom-3 right-3 z-20 h-14 w-14 rounded-2xl bg-[#05070d] shadow-[0_0_0_1px_rgba(255,255,255,0.04)]"
+            aria-hidden="true"
+          />
+        </>
+      )}
     </div>
   );
 }

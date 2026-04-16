@@ -1,0 +1,12 @@
+{
+  "AllowFileSelectionDialogs": true,
+  "DefaultCookiesSetting": 1,
+  "DownloadRestrictions": 0,
+  "HomepageIsNewTabPage": false,
+  "HomepageLocation": "https://www.google.com/",
+  "RestoreOnStartup": 1,
+  "ShowHomeButton": true,
+  "URLAllowlist": [
+    "file:///home/neko/Downloads"
+  ]
+}

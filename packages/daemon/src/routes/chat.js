@@ -377,66 +377,105 @@ const TOOL_DEFS = [
 // ─── HTML generation system prompt ───────────────────────────────────────────
 // Shared by toolCreateApp and toolUpdateApp. Gives the LLM the exact working
 // IndexedDB pattern so generated apps don't have broken persistence.
-const HTML_GEN_SYSTEM_PROMPT = `You are an expert front-end developer. Output ONLY raw HTML — no markdown fences, no explanation. The app must be:
-- Fully self-contained (all CSS and JS inline)
-- Dark glassmorphism theme: body background linear-gradient #0f0c29→#302b63, accent colour #7C3AED
-- Persistent using IndexedDB (NEVER use localStorage for data)
+const HTML_GEN_SYSTEM_PROMPT = `You are an expert front-end developer. Output ONLY a complete, working raw HTML file — no markdown fences, no explanation, no pseudo-code, no placeholder comments.
 
-CRITICAL INDEXEDDB RULES — follow this pattern exactly, no variations:
+RULES (no exceptions):
+- All CSS and JS must be inline in a single HTML file
+- Dark glassmorphism theme: body background linear-gradient(135deg,#0f0c29,#302b63), accent #7C3AED
+- ALL data must persist using IndexedDB — NEVER use a JS array, localStorage, or in-memory state
+- renderList() MUST update the DOM using innerHTML or appendChild — NEVER only console.log
+- ALL button clicks MUST be wired with addEventListener inside DOMContentLoaded — NEVER window.onload
+- Element IDs in addEventListener calls MUST exactly match id= in your HTML
+- NEVER write "// In a real application…" or stub functions — every function must be fully implemented
 
-1. Declare \`let db;\` at the TOP of the <script> block (module-level variable)
-2. openDB() sets the module-level db on onsuccess — do NOT close the db after opening
-3. Every CRUD function uses the module-level \`db\` variable directly via \`db.transaction(...)\`
-4. DOMContentLoaded handler must: (a) await openDB(), (b) await loadAndRender(), (c) attach ONE addEventListener per button
-5. Element IDs in addEventListener calls MUST EXACTLY match the id= attributes in your HTML
-6. NEVER define the same function more than once
-7. NEVER reference a variable outside its scope
+MANDATORY JS STRUCTURE — copy this exactly, only add app-specific code:
 
-WORKING SKELETON to follow:
-\`\`\`
 let db;
-function openDB() {
+function openDB(dbName, storeName) {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open('AppDB', 1);
+    const req = indexedDB.open(dbName, 1);
     req.onupgradeneeded = e => {
       const idb = e.target.result;
-      if (!idb.objectStoreNames.contains('items'))
-        idb.createObjectStore('items', { keyPath: 'id', autoIncrement: true });
+      if (!idb.objectStoreNames.contains(storeName))
+        idb.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
     };
     req.onsuccess = e => { db = e.target.result; resolve(db); };
-    req.onerror  = e => reject(e.target.error);
+    req.onerror = e => reject(e.target.error);
   });
 }
-async function getAllItems() {
+function dbGetAll(storeName) {
   return new Promise(resolve => {
-    const req = db.transaction(['items'], 'readonly').objectStore('items').getAll();
+    const req = db.transaction([storeName],'readonly').objectStore(storeName).getAll();
     req.onsuccess = () => resolve(req.result);
-    req.onerror  = () => resolve([]);
+    req.onerror = () => resolve([]);
   });
 }
-async function addItem(data) {
+function dbAdd(storeName, data) {
   return new Promise((resolve, reject) => {
-    const req = db.transaction(['items'], 'readwrite').objectStore('items').add(data);
+    const req = db.transaction([storeName],'readwrite').objectStore(storeName).add(data);
     req.onsuccess = () => resolve(req.result);
-    req.onerror  = e => reject(e.target.error);
+    req.onerror = e => reject(e.target.error);
   });
 }
-async function deleteItem(id) {
+function dbDelete(storeName, id) {
   return new Promise((resolve, reject) => {
-    const req = db.transaction(['items'], 'readwrite').objectStore('items').delete(id);
+    const req = db.transaction([storeName],'readwrite').objectStore(storeName).delete(id);
     req.onsuccess = () => resolve();
-    req.onerror  = e => reject(e.target.error);
+    req.onerror = e => reject(e.target.error);
   });
 }
-async function loadAndRender() { /* load getAllItems(), build DOM */ }
+// --- App-specific code below ---
+const STORE = 'items'; // rename to match app
+async function renderList() {
+  const items = await dbGetAll(STORE);
+  document.getElementById('list').innerHTML = items.length ? items.map(item =>
+    \`<div class="item">...\${item.name}...<button onclick="del(\${item.id})">✕</button></div>\`
+  ).join('') : '<p class="empty">Nothing here yet.</p>';
+}
+async function handleAdd() {
+  const val = document.getElementById('input').value.trim();
+  if (!val) return;
+  await dbAdd(STORE, { name: val });
+  document.getElementById('input').value = '';
+  await renderList();
+}
+async function del(id) {
+  await dbDelete(STORE, id);
+  await renderList();
+}
 document.addEventListener('DOMContentLoaded', async () => {
-  await openDB();
-  await loadAndRender();
-  document.getElementById('addBtn').addEventListener('click', handleAdd); // id must match HTML
+  await openDB('AppDB', STORE);
+  await renderList();
+  document.getElementById('addBtn').addEventListener('click', handleAdd);
+  document.getElementById('input').addEventListener('keydown', e => { if(e.key==='Enter') handleAdd(); });
 });
-\`\`\`
 
-Now output the complete app HTML:`;
+Now output the COMPLETE app HTML starting with <!DOCTYPE html>:`;
+
+// ── Post-generation HTML validator ─────────────────────────────────────────
+// Detects the most common LLM failure modes: pseudo-code stubs, in-memory
+// arrays, console.log-only renders, missing DOM updates, missing IndexedDB.
+function validateAppHtml(html) {
+  const h = html || '';
+  const failures = [];
+  if (!h.toLowerCase().includes('indexeddb') && !h.includes('indexedDB.open')) {
+    failures.push('no IndexedDB — uses in-memory state');
+  }
+  if (!h.includes('innerHTML') && !h.includes('appendChild') && !h.includes('insertAdjacentHTML')) {
+    failures.push('no DOM updates — renderList does nothing visible');
+  }
+  if (!h.includes('addEventListener') && !h.includes('.onclick')) {
+    failures.push('no event listeners attached');
+  }
+  if (/\/\/\s*in a real (app|application)/i.test(h)) {
+    failures.push('contains pseudo-code stubs');
+  }
+  if (/function\s+render\w*\s*\([^)]*\)\s*\{[^}]*console\.log[^}]*\}/s.test(h) &&
+      !h.includes('innerHTML')) {
+    failures.push('render function only calls console.log');
+  }
+  return failures;
+}
 
 // ─── Memory service helpers ───────────────────────────────────────────────────
 const MEMORY_URL = process.env.MEMORY_SERVICE_URL;
@@ -1141,24 +1180,33 @@ async function toolCreateApp({ name, description, icon, html_content }, options 
     const preMsg = `Building **${name}** ${icon || '🧩'}\u2026 This may take 1\u20133 minutes on CPU. Hang tight!\n\n`;
     for (const char of preMsg) onEvent?.({ token: char });
     addLog('info', `[create_app] auto-generating HTML for "${name}"`);
-    const htmlPrompt = [
+
+    const makePrompt = (retry) => [
       { role: 'system', content: HTML_GEN_SYSTEM_PROMPT },
       {
         role: 'user',
-        content: `Build a complete, fully functional "${name}" app${description ? ` — ${description}` : ''}. Output ONLY the raw HTML starting with <!DOCTYPE html> and ending with </html>. No markdown.`,
+        content: `Build a complete, fully functional "${name}" app${description ? ` — ${description}` : ''}.${retry ? ' IMPORTANT: The previous attempt was rejected because it used pseudo-code stubs or missing DOM updates. This time output a FULLY WORKING app where every function updates the DOM and all data is stored in IndexedDB.' : ''} Output ONLY the raw HTML starting with <!DOCTYPE html> and ending with </html>. No markdown.`,
       },
     ];
-    try {
-      const msg = await chat(htmlPrompt, { model: undefined, signal: null });
-      html_content = (msg.content || '').trim()
-        .replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-    } catch (err) {
-      addLog('warn', `[create_app] HTML generation failed: ${err.message}`);
-      throw new Error(`App HTML generation failed: ${err.message}`);
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const msg = await chat(makePrompt(attempt > 0), { model: undefined, signal: null });
+        html_content = (msg.content || '').trim()
+          .replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+      } catch (err) {
+        addLog('warn', `[create_app] HTML generation failed (attempt ${attempt+1}): ${err.message}`);
+        throw new Error(`App HTML generation failed: ${err.message}`);
+      }
+      if (!html_content.toLowerCase().includes('<html')) {
+        throw new Error('Model did not return valid HTML for the app. Please try again.');
+      }
+      const failures = validateAppHtml(html_content);
+      if (failures.length === 0) break;
+      addLog('warn', `[create_app] attempt ${attempt+1} validation failed: ${failures.join('; ')} — retrying`);
+      html_content = null;
     }
-    if (!html_content.toLowerCase().includes('<html')) {
-      throw new Error('Model did not return valid HTML for the app. Please try again.');
-    }
+    if (!html_content) throw new Error('Model returned invalid app HTML after retries. Please try again.');
   }
 
   await ensureWorkspaceStructure();
@@ -1208,24 +1256,32 @@ async function toolUpdateApp({ name, changes, html_content }, options = {}) {
     for (const char of preMsg) onEvent?.({ token: char });
     addLog('info', `[update_app] updating "${existing.name}" — ${changes}`);
 
-    const editPrompt = [
+    const makeEditPrompt = (retry) => [
       { role: 'system', content: HTML_GEN_SYSTEM_PROMPT },
       {
         role: 'user',
-        content: `Here is the current HTML for the "${existing.name}" app:\n\n${existing.html_content}\n\nApply this change: ${changes}\n\nOutput ONLY the complete updated HTML starting with <!DOCTYPE html> and ending with </html>. Preserve all existing functionality not mentioned in the change. No markdown.`,
+        content: `Here is the current HTML for the "${existing.name}" app:\n\n${existing.html_content}\n\nApply this change: ${changes}${retry ? '\n\nIMPORTANT: The previous attempt was rejected because it used pseudo-code or missing DOM updates. Output a FULLY WORKING app — every function must update the DOM and all data must be in IndexedDB.' : ''}\n\nOutput ONLY the complete updated HTML starting with <!DOCTYPE html> and ending with </html>. Preserve all existing functionality not mentioned in the change. No markdown.`,
       },
     ];
-    try {
-      const msg = await chat(editPrompt, { model: undefined, signal: null });
-      html_content = (msg.content || '').trim()
-        .replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-    } catch (err) {
-      addLog('warn', `[update_app] failed: ${err.message}`);
-      throw new Error(`App update failed: ${err.message}`);
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const msg = await chat(makeEditPrompt(attempt > 0), { model: undefined, signal: null });
+        html_content = (msg.content || '').trim()
+          .replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+      } catch (err) {
+        addLog('warn', `[update_app] failed (attempt ${attempt+1}): ${err.message}`);
+        throw new Error(`App update failed: ${err.message}`);
+      }
+      if (!html_content.toLowerCase().includes('<html')) {
+        throw new Error('Model did not return valid HTML for the update. Please try again.');
+      }
+      const failures = validateAppHtml(html_content);
+      if (failures.length === 0) break;
+      addLog('warn', `[update_app] attempt ${attempt+1} validation failed: ${failures.join('; ')} — retrying`);
+      html_content = null;
     }
-    if (!html_content.toLowerCase().includes('<html')) {
-      throw new Error('Model did not return valid HTML for the update. Please try again.');
-    }
+    if (!html_content) throw new Error('Model returned invalid app HTML after retries. Please try again.');
   }
 
   // Persist to SQLite
@@ -1382,58 +1438,6 @@ async function tryHandleDirectAction(message, onEvent) {
     }
   }
 
-  return null;
-}
-
-// Trim a conversation to keep it within a manageable size for the LLM.
-// Always preserves the system message and the most recent N messages.
-function trimConversation(conv, maxNonSystem = 18) {
-  const system = conv.find((m) => m.role === 'system');
-  const rest = conv.filter((m) => m.role !== 'system');
-  if (rest.length <= maxNonSystem) return conv;
-  const trimmed = rest.slice(-maxNonSystem);
-  // Ensure first non-system message is from user (not orphaned tool/assistant)
-  const firstUserIdx = trimmed.findIndex((m) => m.role === 'user');
-  const safeRest = firstUserIdx > 0 ? trimmed.slice(firstUserIdx) : trimmed;
-  return system ? [system, ...safeRest] : safeRest;
-}
-
-async function runAgent(messages, { model, onEvent, signal }) {
-  const { addLog } = require('../logger');
-  const conversation = trimConversation([...messages]);
-  const actions = [];
-  // Extract the last user message for re-prompt fallback
-  const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user')?.content || '';
-  if (openBrowserMatch) {
-    const rawUrl = (openBrowserMatch[1] || '').trim();
-    const normalizedUrl = rawUrl
-      ? (/^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`)
-      : undefined;
-    const action = { type: 'open_app', appId: 'browser', props: normalizedUrl ? { initialUrl: normalizedUrl } : {} };
-    emit(action);
-    return {
-      content: normalizedUrl ? `Opened Browser and navigated to ${normalizedUrl}.` : 'Opened Browser.',
-      actions: [action],
-    };
-  }
-
-  const openAppMap = [
-    ['files', 'files'],
-    ['file manager', 'files'],
-    ['settings', 'settings'],
-    ['terminal', 'terminal'],
-    ['editor', 'editor'],
-    ['pdf viewer', 'pdf'],
-    ['office', 'office'],
-  ];
-  for (const [label, appId] of openAppMap) {
-    if (new RegExp(`\\b(?:open|launch)\\s+(?:the\\s+)?${label.replace(/ /g, '\\s+')}\\b`, 'i').test(lower)) {
-      const action = { type: 'open_app', appId, props: {} };
-      emit(action);
-      return { content: `Opened ${label}.`, actions: [action] };
-    }
-  }
-
   const folderMatch = text.match(/\bcreate\s+(?:a\s+)?folder(?:\s+(?:named|called))?\s+([A-Za-z0-9._\-/ ]+)$/i);
   if (folderMatch) {
     const folderPath = folderMatch[1].trim().replace(/^['"]|['"]$/g, '');
@@ -1535,39 +1539,36 @@ async function runAgent(messages, { model, onEvent, signal }) {
     const preMsg = `Building **${appName}** ${icon}\u2026 This may take 1\u20133 minutes on CPU. Hang tight!\n\n`;
     for (const char of preMsg) onEvent?.({ token: char });
 
-    // Focused LLM call: generate only HTML, no tool calls needed
-    const htmlPrompt = [
-      {
-        role: 'system',
-        content: HTML_GEN_SYSTEM_PROMPT,
-      },
+    // Focused LLM call: generate only HTML, no tool calls needed — with validation + retry
+    const makeHtmlPrompt = (retry) => [
+      { role: 'system', content: HTML_GEN_SYSTEM_PROMPT },
       {
         role: 'user',
-        content: `Build a complete, fully functional "${appName}" app. Output ONLY the raw HTML starting with <!DOCTYPE html> and ending with </html>. No markdown.`,
+        content: `Build a complete, fully functional "${appName}" app.${retry ? ' IMPORTANT: The previous attempt was rejected because it used pseudo-code stubs or missing DOM updates. This time output a FULLY WORKING app where every function updates the DOM and all data is stored in IndexedDB.' : ''} Output ONLY the raw HTML starting with <!DOCTYPE html> and ending with </html>. No markdown.`,
       },
     ];
 
     let htmlContent = '';
-    try {
-      // No timeout — HTML generation can legitimately take several minutes on CPU
-      const htmlMsg = await chat(htmlPrompt, { model: undefined, signal: null });
-      htmlContent = (htmlMsg.content || '').trim();
-      // Strip any accidental markdown code fences the model may add
-      htmlContent = htmlContent
-        .replace(/^```html\s*/i, '')
-        .replace(/^```\s*/i, '')
-        .replace(/\s*```$/i, '')
-        .trim();
-    } catch (err) {
-      addLog('warn', `[agent] create_app HTML generation failed: ${err.message}`);
-      const errMsg = `Failed to build **${appName}**: ${err.message}`;
-      return { content: errMsg, actions: [] };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const htmlMsg = await chat(makeHtmlPrompt(attempt > 0), { model: undefined, signal: null });
+        htmlContent = (htmlMsg.content || '').trim()
+          .replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+      } catch (err) {
+        addLog('warn', `[agent] create_app HTML generation failed (attempt ${attempt+1}): ${err.message}`);
+        return { content: `Failed to build **${appName}**: ${err.message}`, actions: [] };
+      }
+      if (!htmlContent.toLowerCase().includes('<html')) {
+        addLog('warn', '[agent] create_app: LLM did not return valid HTML');
+        return { content: `Failed to build **${appName}**: the model did not return valid HTML. Please try again.`, actions: [] };
+      }
+      const failures = validateAppHtml(htmlContent);
+      if (failures.length === 0) break;
+      addLog('warn', `[agent] create_app attempt ${attempt+1} validation failed: ${failures.join('; ')} — retrying`);
+      htmlContent = '';
     }
-
-    if (!htmlContent.toLowerCase().includes('<html')) {
-      addLog('warn', '[agent] create_app: LLM did not return valid HTML');
-      const errMsg = `Failed to build **${appName}**: the model did not return valid HTML. Please try again.`;
-      return { content: errMsg, actions: [] };
+    if (!htmlContent) {
+      return { content: `Failed to build **${appName}**: model returned invalid app code. Please try again.`, actions: [] };
     }
 
     const result = await toolCreateApp({

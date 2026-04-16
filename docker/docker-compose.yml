@@ -1,5 +1,33 @@
 services:
 
+  # ── Genesis Browser — Neko remote Chromium session ─────────────────────────
+  browser:
+    image: ghcr.io/m1k1o/neko/chromium:latest
+    container_name: genesis-browser
+    restart: unless-stopped
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        find /home/neko/.config/chromium -maxdepth 1 -name 'Singleton*' -delete 2>/dev/null || true
+        exec /usr/bin/supervisord -c /etc/neko/supervisord.conf
+    shm_size: "2gb"
+    ports:
+      - "${GENESIS_BROWSER_PORT:-8080}:8080"
+      - "${GENESIS_BROWSER_WEBRTC_EPR:-56000-56100}:${GENESIS_BROWSER_WEBRTC_EPR:-56000-56100}/udp"
+    volumes:
+      - neko_profile:/home/neko/.config/chromium
+      - ${GENESIS_WORKSPACE:-./workspace}/Downloads:/home/neko/Downloads
+      - ./neko/chromium-policies.json:/etc/chromium/policies/managed/policies.json:ro
+    environment:
+      - NEKO_DESKTOP_SCREEN=${GENESIS_BROWSER_SCREEN:-1600x900@30}
+      - NEKO_MEMBER_MULTIUSER_USER_PASSWORD=${GENESIS_BROWSER_PASSWORD:-genesis}
+      - NEKO_MEMBER_MULTIUSER_ADMIN_PASSWORD=${GENESIS_BROWSER_ADMIN_PASSWORD:-genesis-admin}
+      - NEKO_SESSION_IMPLICIT_HOSTING=true
+      - NEKO_WEBRTC_EPR=${GENESIS_BROWSER_WEBRTC_EPR:-56000-56100}
+      - NEKO_WEBRTC_NAT1TO1=${GENESIS_BROWSER_NAT1TO1:-127.0.0.1}
+      - NEKO_WEBRTC_ICELITE=1
+
   # ── Ollama — local LLM inference engine ──────────────────────────────────────
   # GPU support: uses NVIDIA GPU automatically when available (nvidia runtime
   # detected). Set GENESIS_USE_GPU=false in .env to force CPU-only mode.
@@ -19,7 +47,7 @@ services:
       - OLLAMA_ORIGINS=*
       - OLLAMA_INSECURE=true
       # Set to 999 to use GPU, 0 to force CPU-only
-      - OLLAMA_NUM_GPU=${OLLAMA_NUM_GPU:-0}
+      - OLLAMA_NUM_GPU=999
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 30s
@@ -38,6 +66,8 @@ services:
     # Default local: 3000:3000 — add to your docker-compose.override.yml
     # VPS: 127.0.0.1:3001:3000 — defined in docker-compose.vps.yml
     depends_on:
+      browser:
+        condition: service_started
       ollama:
         condition: service_healthy
       memory:
@@ -48,7 +78,7 @@ services:
       - genesis_data:/data
       - ${GENESIS_WORKSPACE:-./workspace}:/workspace
     environment:
-      - GENESIS_MODEL=${GENESIS_MODEL:-qwen3:1.7b}
+      - GENESIS_MODEL=gemma4:e4b
       - GENESIS_MODEL_FALLBACK=${GENESIS_MODEL_FALLBACK:-qwen2.5:1.5b,qwen2.5:0.5b}
       - OLLAMA_BASE_URL=http://ollama:11434
       - GENESIS_PORT=3000
@@ -58,7 +88,13 @@ services:
       - GENESIS_ALLOW_INSECURE_TLS=${GENESIS_ALLOW_INSECURE_TLS:-true}
       - GENESIS_APPROVAL_MODE=${GENESIS_APPROVAL_MODE:-true}
       - GENESIS_VOICE_ENABLED=${GENESIS_VOICE_ENABLED:-true}
-      - DEMO_MODE=true
+      - GENESIS_BROWSER_ENABLED=${GENESIS_BROWSER_ENABLED:-true}
+      - GENESIS_BROWSER_PORT=${GENESIS_BROWSER_PORT:-8080}
+      - GENESIS_BROWSER_PUBLIC_URL=${GENESIS_BROWSER_PUBLIC_URL:-}
+      - GENESIS_BROWSER_PASSWORD=${GENESIS_BROWSER_PASSWORD:-genesis}
+      - GENESIS_BROWSER_USERNAME=${GENESIS_BROWSER_USERNAME:-Genesis User}
+      - GENESIS_BROWSER_DEFAULT_URL=${GENESIS_BROWSER_DEFAULT_URL:-https://www.google.com/}
+      - DEMO_MODE=false
       - MEMORY_SERVICE_URL=http://memory:7701
       - VOICE_SERVICE_URL=http://voice:7702
       - NODE_ENV=production
@@ -138,4 +174,6 @@ volumes:
   ollama_data:
     driver: local
   genesis_data:
+    driver: local
+  neko_profile:
     driver: local

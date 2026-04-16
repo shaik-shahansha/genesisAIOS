@@ -39,6 +39,7 @@ async function start() {
   // API routes
   app.use('/api/auth', require('./routes/auth'));
   app.use('/api', auth.requireAuth);
+  app.use('/api/browser', require('./routes/browser'));
   app.use('/api/ai', require('./routes/chat'));
   app.use('/api/fs', require('./routes/fs'));
   app.use('/api/browse', require('./routes/browse'));
