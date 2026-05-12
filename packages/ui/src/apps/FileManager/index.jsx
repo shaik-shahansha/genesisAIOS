@@ -113,7 +113,7 @@ export default function FileManager({ winId }) {
           if (raw === '[DONE]') break;
           try {
             const parsed = JSON.parse(raw);
-            const delta = parsed.choices?.[0]?.delta?.content ?? parsed.response ?? '';
+            const delta = parsed.token ?? parsed.choices?.[0]?.delta?.content ?? parsed.response ?? '';
             if (delta) {
               accumulated += delta;
               setSummaryPanel(prev => prev ? { ...prev, text: accumulated } : null);

@@ -1,6 +1,12 @@
 services:
   ollama:
-    deploy: {}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
 
   daemon:
     ports:

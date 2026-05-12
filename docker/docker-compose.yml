@@ -78,7 +78,7 @@ services:
       - genesis_data:/data
       - ${GENESIS_WORKSPACE:-./workspace}:/workspace
     environment:
-      - GENESIS_MODEL=gemma4:e4b
+      - GENESIS_MODEL=${GENESIS_MODEL:-gemma4:e4b}
       - GENESIS_MODEL_FALLBACK=${GENESIS_MODEL_FALLBACK:-qwen2.5:1.5b,qwen2.5:0.5b}
       - OLLAMA_BASE_URL=http://ollama:11434
       - GENESIS_PORT=3000

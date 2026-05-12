@@ -1,7 +1,7 @@
 # Genesis OS — VPS Quick Deploy Reference
 
-**VPS:** `administrator@69.197.142.160`  
-**Repo:** `https://github.com/shaik-shahansha/genesisAIOS` (private)  
+**VPS:** `user@YOUR_VPS_IP`  
+**Repo:** `https://github.com/YOUR_USERNAME/genesis-os`  
 **OS:** Ubuntu 22.04 / 24.04  
 **Model:** `qwen3:1.7b` (CPU-only, 1.4 GB)
 
@@ -20,7 +20,7 @@ Go to: https://github.com/settings/tokens/new
 ## Step 2 — SSH into VPS
 
 ```powershell
-ssh administrator@69.197.142.160
+ssh user@YOUR_VPS_IP
 ```
 
 ---
@@ -41,7 +41,7 @@ docker --version && docker compose version
 
 ```bash
 cd ~
-git clone https://YOUR_PAT@github.com/shaik-shahansha/genesisAIOS.git genesis-os
+git clone https://YOUR_PAT@github.com/YOUR_USERNAME/genesis-os.git genesis-os
 cd genesis-os
 ```
 
@@ -60,7 +60,7 @@ GENESIS_MODEL=qwen3:1.7b
 GENESIS_MODEL_FALLBACK=qwen2.5:1.5b
 OLLAMA_NUM_GPU=0
 GENESIS_PORT=3000
-GENESIS_USER_NAME=Shahansha
+GENESIS_USER_NAME=User
 GENESIS_VOICE_ENABLED=false
 GENESIS_APPROVAL_MODE=true
 GENESIS_ALLOW_INSECURE_TLS=false
@@ -115,7 +115,7 @@ docker compose -f docker/docker-compose.yml ps
 curl http://localhost:3000/api/ai/models
 ```
 
-Open in browser: **http://69.197.142.160:3000**
+Open in browser: **http://YOUR_VPS_IP:3000**
 
 ---
 

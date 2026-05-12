@@ -1,7 +1,7 @@
 # Genesis OS — Build Status Tracker
 
 > Cross-session tracker. Update this file at the end of every session.
-> Last updated: 2026-04-14 — **OpenClaw-inspired: model failover chain, SOUL.md/AGENTS.md identity layer, chat slash commands, SKILL.md tool descriptors added.**
+> Last updated: 2026-04-16 — **Browser architecture switched from fragile iframe proxying to a Neko-backed remote Chromium session with persistent profile and workspace Downloads integration.**
 
 ---
 
@@ -70,7 +70,7 @@
 - [x] `FileManager/` — tree sidebar + icon grid, file operations via `/api/fs`
 - [x] `PDFViewer/` — native browser iframe PDF rendering via `/api/fs/raw`
 - [x] `OfficeViewer/` — `docx-preview` + `SheetJS` (.docx, .xlsx)
-- [x] `AIBrowser/` — iframe + URL bar + AI summarize via `/api/browse`
+- [x] `AIBrowser/` — Neko-backed remote Chromium embed + AI page analysis via `/api/browse`
 - [x] `TextEditor/` — Monaco Editor (code/text files)
 - [x] `Terminal/` — `xterm.js` connected to `/api/shell` WebSocket
 - [x] `Settings/` — model picker, accent colour, wallpaper, voice toggle
@@ -195,9 +195,9 @@ Status key: 🔴 Not started · 🟡 In progress · 🟢 Done · ⏸ Blocked
 - Chat surfaces voice-sidecar readiness/errors and inline approvals for destructive agent actions
 
 **UI — Browser app (`AIBrowser/index.jsx`):**
-- Default quicklinks changed to DuckDuckGo, Wikipedia, Hacker News
-- Search terms (non-URLs with spaces) redirect to DuckDuckGo automatically
-- Blocked-site overlay — detects `refused to connect` / iframe block and shows friendly message with "Open in new tab" and "Search DuckDuckGo" buttons
+- Replaced proxy/iframe browsing with a Neko-powered remote Chromium session embedded inside the Genesis Browser window
+- Added authenticated daemon bridge (`/api/browser/config`, `/api/browser/session`) so the UI can launch the remote browser without exposing raw Neko URLs in app code
+- Added persistent Chromium profile and workspace `Downloads/` mount so browser state and downloaded files survive restarts and appear in Files
 
 **UI — Office Viewer (`OfficeViewer/index.jsx`):**
 - Added `.md` and `.markdown` rendering (basic Markdown → HTML conversion)
@@ -294,7 +294,7 @@ GENESIS_MODEL_FALLBACK=gemma4:e2b,llama3.2:3b  # Comma-separated fallback models
 ### 2026-04-13 — Session 5: Bug fixes — voice echo, image blocking, Office Viewer, AI Browser
 - **Voice echo fixed:** replaced Web Audio VAD (unreliable, detected speaker as mic input) with `isSpeakingRef` mute pattern: `recognition.abort()` before TTS, restart 500ms after TTS ends. All `onresult`/`onend`/`onerror` handlers guard on `isSpeakingRef`.
 - **Image gen non-blocking:** added `skipFinalLlm: true` + `finalMessage: '![prompt](url)'` to `generate_image` return — agent exits immediately with inline markdown image, no 2nd LLM call.
-- **AI Browser:** DuckDuckGo default, auto-search for non-URLs, blocked-site overlay for `X-Frame-Options` sites.
+- **AI Browser:** Google default, auto-search for non-URLs, AI summary opened from the title-bar button.
 - **Office Viewer:** `.md`/`.html`/`.txt` rendering; DOCX fallback to plain text on parse error.
 - **Docker DNS fix:** added `"dns": ["8.8.8.8","8.8.4.4","1.1.1.1"]` to `%USERPROFILE%\.docker\daemon.json` to fix `registry-1.docker.io: no such host` on networks with broken DNS.
 - Rebuilt and redeployed daemon container; genesis-daemon healthy
