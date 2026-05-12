@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#050008"/>
+      <stop offset="50%"  stop-color="#0f0020"/>
+      <stop offset="100%" stop-color="#1a003a"/>
+    </linearGradient>
+
+    <!-- Violet glow radial -->
+    <radialGradient id="glow1" cx="30%" cy="45%" r="55%">
+      <stop offset="0%"   stop-color="#7c3aed" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="85%" cy="60%" r="40%">
+      <stop offset="0%"   stop-color="#a855f7" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orbGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#7c3aed" stop-opacity="0.9"/>
+      <stop offset="60%"  stop-color="#5b21b6" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#3b0764" stop-opacity="0.3"/>
+    </radialGradient>
+
+    <!-- Card glassmorphism -->
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.02"/>
+    </linearGradient>
+
+    <!-- Shimmer for orb ring -->
+    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#a78bfa"/>
+      <stop offset="50%"  stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#4c1d95"/>
+    </linearGradient>
+
+    <!-- Clip path for rounded rect cards -->
+    <clipPath id="card1Clip"><rect x="652" y="82"  width="510" height="210" rx="16"/></clipPath>
+    <clipPath id="card2Clip"><rect x="652" y="310" width="510" height="230" rx="16"/></clipPath>
+
+    <!-- Filter: glow blur -->
+    <filter id="glowFilter" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="16" flood-color="#7c3aed" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- ── BACKGROUND ── -->
+  <rect width="1200" height="630" fill="url(#bgGrad)"/>
+
+  <!-- Subtle grid pattern -->
+  <g opacity="0.045" stroke="#a78bfa" stroke-width="0.8">
+    <!-- Vertical lines -->
+    <line x1="100" y1="0" x2="100" y2="630"/>
+    <line x1="200" y1="0" x2="200" y2="630"/>
+    <line x1="300" y1="0" x2="300" y2="630"/>
+    <line x1="400" y1="0" x2="400" y2="630"/>
+    <line x1="500" y1="0" x2="500" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="700" y1="0" x2="700" y2="630"/>
+    <line x1="800" y1="0" x2="800" y2="630"/>
+    <line x1="900" y1="0" x2="900" y2="630"/>
+    <line x1="1000" y1="0" x2="1000" y2="630"/>
+    <line x1="1100" y1="0" x2="1100" y2="630"/>
+    <!-- Horizontal lines -->
+    <line x1="0" y1="90"  x2="1200" y2="90"/>
+    <line x1="0" y1="180" x2="1200" y2="180"/>
+    <line x1="0" y1="270" x2="1200" y2="270"/>
+    <line x1="0" y1="360" x2="1200" y2="360"/>
+    <line x1="0" y1="450" x2="1200" y2="450"/>
+    <line x1="0" y1="540" x2="1200" y2="540"/>
+  </g>
+
+  <!-- Glow blobs -->
+  <rect width="1200" height="630" fill="url(#glow1)"/>
+  <rect width="1200" height="630" fill="url(#glow2)"/>
+
+  <!-- Decorative star particles -->
+  <g fill="#ffffff">
+    <circle cx="72"   cy="55"  r="1.2" opacity="0.6"/>
+    <circle cx="145"  cy="120" r="0.8" opacity="0.4"/>
+    <circle cx="210"  cy="38"  r="1.5" opacity="0.5"/>
+    <circle cx="310"  cy="80"  r="0.9" opacity="0.35"/>
+    <circle cx="560"  cy="25"  r="1.1" opacity="0.5"/>
+    <circle cx="620"  cy="590" r="1.0" opacity="0.4"/>
+    <circle cx="780"  cy="40"  r="1.3" opacity="0.5"/>
+    <circle cx="900"  cy="18"  r="0.8" opacity="0.35"/>
+    <circle cx="1050" cy="55"  r="1.2" opacity="0.5"/>
+    <circle cx="1130" cy="105" r="0.9" opacity="0.4"/>
+    <circle cx="1180" cy="600" r="1.1" opacity="0.3"/>
+    <circle cx="50"   cy="580" r="0.8" opacity="0.3"/>
+    <circle cx="400"  cy="610" r="1.0" opacity="0.35"/>
+    <circle cx="850"  cy="608" r="0.9" opacity="0.3"/>
+  </g>
+
+  <!-- ── LEFT PANEL — HERO TEXT ── -->
+
+  <!-- AI Orb -->
+  <circle cx="76" cy="92" r="30" fill="url(#orbGlow)" filter="url(#softGlow)"/>
+  <!-- Orb ring -->
+  <circle cx="76" cy="92" r="30" fill="none" stroke="url(#ringGrad)" stroke-width="2" opacity="0.85"/>
+  <!-- Orb inner lightning bolt -->
+  <text x="76" y="101" font-size="26" text-anchor="middle" fill="#ffffff" opacity="0.95">⚡</text>
+
+  <!-- Genesis OS wordmark -->
+  <text x="122" y="80" font-family="'Segoe UI', system-ui, sans-serif" font-size="28" font-weight="700" fill="#ffffff" letter-spacing="0.5">Genesis</text>
+  <text x="122" y="110" font-family="'Segoe UI', system-ui, sans-serif" font-size="28" font-weight="700" fill="#a78bfa" letter-spacing="0.5">AI OS</text>
+
+  <!-- Divider line -->
+  <line x1="38" y1="142" x2="610" y2="142" stroke="#7c3aed" stroke-width="1" opacity="0.5"/>
+
+  <!-- Hero headline -->
+  <text x="38" y="202" font-family="'Segoe UI', system-ui, sans-serif" font-size="52" font-weight="800" fill="#ffffff" letter-spacing="-0.5">100% Local.</text>
+  <text x="38" y="262" font-family="'Segoe UI', system-ui, sans-serif" font-size="52" font-weight="800" fill="#7c3aed" filter="url(#glowFilter)" letter-spacing="-0.5">AI-Native OS.</text>
+
+  <!-- Sub-headline -->
+  <text x="38" y="310" font-family="'Segoe UI', system-ui, sans-serif" font-size="20" font-weight="400" fill="#c4b5fd" opacity="0.85">Powered by Ollama + Gemma4 · No cloud · No API keys</text>
+  <text x="38" y="338" font-family="'Segoe UI', system-ui, sans-serif" font-size="20" font-weight="400" fill="#c4b5fd" opacity="0.7">Runs on your hardware. Remembers everything.</text>
+
+  <!-- Divider -->
+  <line x1="38" y1="370" x2="580" y2="370" stroke="#4c1d95" stroke-width="1" opacity="0.6"/>
+
+  <!-- Inline badges row -->
+  <!-- Badge: Docker -->
+  <rect x="38"  y="388" width="102" height="32" rx="16" fill="#7c3aed" fill-opacity="0.2" stroke="#7c3aed" stroke-width="1.2" stroke-opacity="0.6"/>
+  <text x="89"  y="409" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#c4b5fd" text-anchor="middle">🐳 Docker</text>
+
+  <!-- Badge: MIT Open Source -->
+  <rect x="152" y="388" width="138" height="32" rx="16" fill="#7c3aed" fill-opacity="0.2" stroke="#7c3aed" stroke-width="1.2" stroke-opacity="0.6"/>
+  <text x="221" y="409" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#c4b5fd" text-anchor="middle">⚖️ MIT Open Source</text>
+
+  <!-- Badge: Privacy first -->
+  <rect x="302" y="388" width="138" height="32" rx="16" fill="#7c3aed" fill-opacity="0.2" stroke="#7c3aed" stroke-width="1.2" stroke-opacity="0.6"/>
+  <text x="371" y="409" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="600" fill="#c4b5fd" text-anchor="middle">🔒 Privacy First</text>
+
+
+
+  <!-- Bottom line: URL -->
+  <text x="38" y="590" font-family="'Segoe UI', system-ui, sans-serif" font-size="20" font-weight="700" fill="#a78bfa" opacity="0.95">genesisos.genesisagi.in</text>
+  <text x="268" y="590" font-family="'Segoe UI', system-ui, sans-serif" font-size="20" font-weight="600" fill="#c4b5fd" opacity="1"> · by Shahansha</text>
+
+
+  <!-- ── RIGHT PANEL — FEATURE CARDS ── -->
+
+  <!-- Card 1: Core AI features -->
+  <rect x="652" y="72" width="510" height="222" rx="18" fill="url(#cardGrad)" stroke="#7c3aed" stroke-width="1.2" stroke-opacity="0.4" filter="url(#cardShadow)"/>
+  <!-- Card 1 header bar -->
+  <rect x="652" y="72" width="510" height="46" rx="18" fill="#7c3aed" fill-opacity="0.15"/>
+  <rect x="652" y="95"  width="510" height="23" fill="#7c3aed" fill-opacity="0.15"/>
+  <text x="676" y="102" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#a78bfa" letter-spacing="1.2">AI ENGINE</text>
+
+  <!-- Feature rows inside card 1 -->
+  <!-- Row 1 -->
+  <circle cx="677" cy="132" r="4" fill="#7c3aed"/>
+  <text x="693" y="137" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="600" fill="#f3f0ff">Ollama + Gemma4 — local inference</text>
+
+  <!-- Row 2 -->
+  <circle cx="677" cy="160" r="4" fill="#7c3aed"/>
+  <text x="693" y="165" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="600" fill="#f3f0ff">Persistent memory — ChromaDB + SQLite</text>
+
+  <!-- Row 3 -->
+  <circle cx="677" cy="188" r="4" fill="#7c3aed"/>
+  <text x="693" y="193" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="600" fill="#f3f0ff">App Builder — build apps with local AI on the fly</text>
+
+  <!-- Row 4 -->
+  <circle cx="677" cy="216" r="4" fill="#7c3aed"/>
+  <text x="693" y="221" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="600" fill="#f3f0ff">Swap model without code changes</text>
+
+  <!-- Row 5 -->
+  <circle cx="677" cy="244" r="4" fill="#a78bfa"/>
+  <text x="693" y="249" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="600" fill="#c4b5fd">Voice (STT/TTS) · Wake-word · Multimodal</text>
+
+
+  <!-- Card 2: Built-in apps -->
+  <rect x="652" y="316" width="510" height="236" rx="18" fill="url(#cardGrad)" stroke="#7c3aed" stroke-width="1.2" stroke-opacity="0.4" filter="url(#cardShadow)"/>
+  <!-- Card 2 header bar -->
+  <rect x="652" y="316" width="510" height="46" rx="18" fill="#7c3aed" fill-opacity="0.15"/>
+  <rect x="652" y="339" width="510" height="23" fill="#7c3aed" fill-opacity="0.15"/>
+  <text x="676" y="346" font-family="'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#a78bfa" letter-spacing="1.2">BUILT-IN APPS</text>
+
+  <!-- 2-column app list -->
+  <!-- Left column -->
+  <text x="677" y="385" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" fill="#f3f0ff">📁  File Manager</text>
+  <text x="677" y="413" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" fill="#f3f0ff">📄  PDF Viewer</text>
+  <text x="677" y="441" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" fill="#f3f0ff">📊  Office Viewer</text>
+  <text x="677" y="469" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" fill="#f3f0ff">📝  Monaco Editor</text>
+  <text x="677" y="497" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" fill="#f3f0ff">⚙️  Settings</text>
+
+  <!-- Right column -->
+  <text x="880" y="385" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" fill="#f3f0ff">🌐  AI Browser</text>
+  <text x="880" y="413" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" fill="#f3f0ff">⬛  Terminal (PTY)</text>
+  <text x="880" y="441" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" fill="#f3f0ff">🖥️  Desktop Shell</text>
+  <text x="880" y="469" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" fill="#f3f0ff">🔔  AI Orb + Notifs</text>
+  <text x="880" y="497" font-family="'Segoe UI', system-ui, sans-serif" font-size="15" fill="#f3f0ff">🔌  Plugin Tools</text>
+
+  <!-- Bottom accent stripe -->
+  <rect x="652" y="544" width="510" height="4" rx="2" fill="url(#ringGrad)" opacity="0.6"/>
+
+  <!-- ── BOTTOM BORDER ── -->
+  <line x1="0" y1="620" x2="1200" y2="620" stroke="#7c3aed" stroke-width="1" opacity="0.3"/>
+
+  <!-- docker compose up note -->
+  <text x="600" y="613" font-family="'Segoe UI Mono', 'Courier New', monospace" font-size="14" font-weight="500" fill="#7c3aed" text-anchor="middle" opacity="0.75">docker compose up  →  full OS in seconds</text>
+
+</svg>
