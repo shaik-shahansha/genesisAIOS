@@ -1,4 +1,4 @@
-# Genesis OS
+﻿# Genesis OS
 
 > A local-first AI shell that runs as a Docker container — and the foundation for a native Linux OS variant.
 
@@ -14,7 +14,7 @@ Genesis OS is a **persistent AI presence** that runs entirely on your own hardwa
 
 ```bash
 # 1. Clone
-git clone https://github.com/shahansha/genesis-os
+git clone https://github.com/shaik-shahansha/genesisAIOS
 cd genesis-os
 
 # 2. Configure (optional — defaults work out of the box)
