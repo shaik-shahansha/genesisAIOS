@@ -159,6 +159,10 @@
     </div>
     <div class="nav-actions">
       <button class="nav-theme-btn">🌙</button>
+      <a href="https://genesisos.genesisagi.in/" class="nav-github" target="_blank" rel="noopener" style="background:var(--accent);color:#fff;border-color:var(--accent);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        <span>Try Demo</span>
+      </a>
       <a href="https://github.com/shaik-shahansha/genesisAIOS" class="nav-github" target="_blank" rel="noopener">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
         <span>GitHub</span>
@@ -192,17 +196,17 @@
     <div class="status-card fade-up">
       <div class="flex-between" style="flex-wrap:wrap;gap:16px;align-items:flex-start;margin-bottom:20px;">
         <div>
-          <div style="font-size:0.8rem;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Current Status</div>
-          <h2 class="text-h2" style="margin-bottom:4px;">Phase 0 — Docker MVP</h2>
-          <p style="font-size:0.9rem;color:var(--text-3);">The foundation is being laid. Shipping fast.</p>
+          <div style="font-size:0.8rem;font-weight:600;color:#10b981;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Current Status</div>
+          <h2 class="text-h2" style="margin-bottom:4px;">Phases 0 – 3 Complete</h2>
+          <p style="font-size:0.9rem;color:var(--text-3);">Docker shell, persistent memory, voice, and agentic AI are all live.</p>
         </div>
-        <span class="phase-badge active">● In Progress</span>
+        <span class="phase-badge done">✓ Phases 0–3 Done</span>
       </div>
 
       <div class="phase-progress-bar">
-        <div class="phase-progress-fill" style="width: 70%"></div>
+        <div class="phase-progress-fill" style="width: 100%"></div>
       </div>
-      <div class="phase-progress-label"><span>Phase 0 — Docker MVP</span><span>~70%</span></div>
+      <div class="phase-progress-label"><span>Phases 0–3 — Docker MVP · Memory · Voice · Agentic Tools</span><span>100%</span></div>
 
       <div style="margin-top:24px; display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
@@ -212,28 +216,28 @@
           <span style="color:#10b981;font-weight:700;">✓</span> <span>AI chat with streaming</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
-          <span style="color:#10b981;font-weight:700;">✓</span> <span>File Manager app</span>
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>File Manager, Terminal, Editor, PDF, Browser</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
-          <span style="color:#10b981;font-weight:700;">✓</span> <span>Terminal (xterm.js + WebSocket PTY)</span>
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>Docker Compose single-command boot</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
-          <span style="color:#10b981;font-weight:700;">✓</span> <span>PDF & Office Viewer</span>
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>ChromaDB persistent vector memory</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
-          <span style="color:#10b981;font-weight:700;">✓</span> <span>Monaco Text Editor</span>
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>File watcher + auto-indexing</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
-          <span style="color:#10b981;font-weight:700;">✓</span> <span>AI Browser with URL summary</span>
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>Voice — Whisper STT + Kokoro TTS</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
-          <span style="color:var(--accent);font-weight:700;">↻</span> <span>Ollama auto-pull on first boot</span>
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>Agentic tool registry + reasoning loop</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
-          <span style="color:var(--text-3);">○</span> <span style="color:var(--text-3);">Full docker compose up testing</span>
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>Approval system for destructive actions</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;font-size:0.85rem;">
-          <span style="color:var(--text-3);">○</span> <span style="color:var(--text-3);">Lock screen + auth</span>
+          <span style="color:#10b981;font-weight:700;">✓</span> <span>Ollama auto-pull on first boot</span>
         </div>
       </div>
     </div>
@@ -516,8 +520,8 @@
 <section class="section">
   <div class="container">
     <div class="cta-banner fade-up">
-      <h2>Phase 0 is shipping now.</h2>
-      <p>Be part of the first AI OS that puts the user back in control.</p>
+      <h2>Phases 0–3 complete. Phase 4 is next.</h2>
+      <p>Docker shell, memory, voice, and agentic AI are all live. Now expanding to native Linux, Electron, and multi-device.</p>
       <div class="flex-center gap-12" style="flex-wrap:wrap;">
         <a href="architecture.html#quickstart" class="btn btn-white btn-lg">Run It Now</a>
         <a href="https://github.com/shaik-shahansha/genesisAIOS" class="btn btn-outline-white btn-lg" target="_blank" rel="noopener">⭐ Star on GitHub</a>

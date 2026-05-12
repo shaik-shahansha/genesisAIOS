@@ -1,7 +1,7 @@
 # Genesis OS — VPS Quick Deploy Reference
 
 **VPS:** `user@YOUR_VPS_IP`  
-**Repo:** `https://github.com/YOUR_USERNAME/genesis-os`  
+**Repo:** `https://github.com/shaik-shahansha/genesisAIOS`  
 **OS:** Ubuntu 22.04 / 24.04  
 **Model:** `qwen3:1.7b` (CPU-only, 1.4 GB)
 

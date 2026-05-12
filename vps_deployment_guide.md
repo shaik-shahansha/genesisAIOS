@@ -69,7 +69,7 @@ docker compose version
 
 ```bash
 cd ~
-git clone https://github.com/YOUR_USERNAME/genesis-os.git
+git clone https://github.com/shaik-shahansha/genesisAIOS.git
 cd genesis-os
 ```
 
